@@ -1,321 +1,10 @@
-template <typename T>
-class Signal {
-  public:
-  T get() {return _value;}
-  bool hasValue() {return _has_value;}
-  void reset() {_has_value = false;}
-
-  void set(T value) {
-    _has_value = true;
-    _value = value;
-  }
-
-  private:
-  bool _has_value;
-  T _value;
-};
-
-template <typename T>
-class State {
-  public:
-  T get() {return _value;}
-  bool hasChanges() {return _has_changes;}
-  void markHandled() {_has_changes = false;}
-
-  void set(T value) {
-    if (_value != value) {
-      _has_changes = true;
-    }
-    _value = value;
-  }
-
-  private:
-  bool _has_changes;
-  T _value;
-};
-
-enum class LightValue : uint8_t {Off = 0, On, Half, Min};
-
-enum class Gesture : uint8_t {OneClick = 0, DoubleClick, TripleClick, MediumClick, Hold, DoubleHold, Reserve2, Reserve3, Nope};
-enum class Action : uint8_t {Off = 0, On, Half, Min, Toggle, Reserve1, Reserve2, Reserve3};
-
-LightValue ApplyActionToCurrentValue(LightValue currentValue, Action currentAction) {
-  switch(currentAction){
-    case Action::On:
-      return LightValue::On;
-    case Action::Off:
-      return LightValue::Off;
-    case Action::Min:
-      return LightValue::Min;
-    case Action::Half:
-      return LightValue::Half;
-    case Action::Toggle:
-      return currentValue != LightValue::Off ? LightValue::Off : LightValue::On;
-  }
-}
-
-class ZoneProcessor {
-  public:
-
-  bool stateSensorDayMode;
-  bool stateSensorEveningMode;
-
-  Signal<bool> signalMaster;
-  Signal<bool> signalSwitch;
-  Signal<bool> signalSensor;
-  Signal<Action> signalGesture;
-
-  State<LightValue> outputState;
-
-  void Check() {
-    if (signalSensor.hasValue()) {
-      bool ss = signalSensor.get();
-      if (ss && _state == LightValue::Off && !stateSensorDayMode) {
-        _state = stateSensorEveningMode ? LightValue::Half : LightValue::Min;
-      } else if (!ss && (_state == LightValue::Half || _state == LightValue::Min)) {
-        _state = LightValue::Off;
-      }
-      signalSensor.reset();
-    }
-
-    if (signalSwitch.hasValue()) {
-      bool ssw = signalSwitch.get();
-      if (ssw && _state == LightValue::Off) {
-        _state = LightValue::On;
-      } else if (!ssw && _state != LightValue::Off) {
-        _state = LightValue::Off;
-      }
-      signalSwitch.reset();
-    }
-
-    if (signalMaster.hasValue() && !signalMaster.get()) {
-      _state = LightValue::Off;
-    }
-
-    if (signalGesture.hasValue()) {
-      _state = ApplyActionToCurrentValue(_state, signalGesture.get());
-      signalGesture.reset();
-    }
-
-    outputState.set(_state);
-  }
-
-  private:
-  LightValue _state;
-};
-
-
-union MasterRegister
-{
-   struct {
-     bool MasterSwitch:1; // enable\disable all switch
-     bool DayMode:1;      // enable\disable all sensors
-     bool EveningMode:1;  // enable\disable sensor pwm to 99%
-     bool InvertInput:1;
-     bool InvertOutput:1;
-     bool GestureLag:1;
-     bool coil06:1;
-     bool coil07:1;
-     bool coil08:1;
-     bool coil09:1;
-     bool coil10:1;
-     bool coil11:1;
-     bool coil12:1;
-     bool coil13:1;
-     bool coil14:1;
-     bool coil15:1;
-   } coils;
-   struct {
-     uint8_t first:8;
-     uint8_t second:8;
-   } words;
-   uint16_t value;
-};
-
-union CommonRegister
-{
-   struct {
-     bool coil00:1;
-     bool coil01:1;
-     bool coil02:1;
-     bool coil03:1;
-     bool coil04:1;
-     bool coil05:1;
-     bool coil06:1;
-     bool coil07:1;
-     bool coil08:1;
-     bool coil09:1;
-     bool coil10:1;
-     bool coil11:1;
-     bool coil12:1;
-     bool coil13:1;
-     bool coil14:1;
-     bool coil15:1;
-   } coils;
-   struct {
-     uint8_t first:8;
-     uint8_t second:8;
-   } words;
-   uint16_t value;
-};
-
-union GestureRegister
-{
-   struct {
-     uint8_t action:3;
-     bool procOrOut:1;
-     bool rotate:1;
-     uint8_t type:3;
-     uint8_t map:8;
-   } coils;
-   struct {
-     uint8_t first:8;
-     uint8_t second:8;
-   } words;
-   uint16_t value;
-};
-
-union SceneActivateRegister
-{
-   struct {
-     uint8_t action:3;
-     bool procOrOut:1;
-     bool rotate:1;
-     bool handled:1;
-     uint8_t reserve:2;
-     uint8_t map:8;
-   } coils;
-   struct {
-     uint8_t first:8;
-     uint8_t second:8;
-   } words;
-   uint16_t value;
-};
-
+//do not try change this =)
 #define channel_count 8 
-#define registers_count 80 
-// массив данных modbus
-uint16_t data[registers_count];
-CommonRegister regs[registers_count];
 
+#include "bb_primitives.h"
+#include "bb_proc.h"
+#include "bb_register.h"
 
-template <typename T>
-class RegisterModel {
-  public:
-
-  RegisterModel(uint8_t reg) {_reg = reg;}
-
-  T get() {
-    T t;
-    t.value = regs[_reg].value;
-    return t;
-  }
-
-  void set(T t) {
-    regs[_reg].value = t.value;
-  }
-
-  void set(uint16_t t) {
-    regs[_reg].value = t;
-  }
-
-  void setFirstWord(uint8_t w) {
-    regs[_reg].words.first = w;
-  }
-
-  void setSecondWord(uint8_t w) {
-    regs[_reg].words.second = w;
-  }
-
-  bool getWordBit(bool hiLo, uint8_t bit) {
-    return bitRead(hiLo ? regs[_reg].words.first : regs[_reg].words.second,bit);
-  }
-
-  protected:
-  uint8_t _reg;
-};
-
-class SwitchIOModel {
-  public:
-
-  SwitchIOModel(uint16_t regNumber, bool hiLo) : reg(regNumber) {
-      _hiLo = hiLo;
-  }
-
-  RegisterModel<CommonRegister> reg;
-  State<bool> states[channel_count];
-
-  void virtual Read() {
-    for (int i = 0; i < channel_count; i++) {
-      int v = _hiLo ? reg.get().words.first : reg.get().words.second;
-      states[i].set(bitRead(v,i));
-    }
-  }
-
-  void virtual Write() {
-    int value = 0;
-    for (int i = 0; i < channel_count; i++) {
-      value = bitWrite(value,i, states[i].get());
-      if (_hiLo) {
-        reg.setFirstWord(value);
-      } else {
-        reg.setSecondWord(value);
-      }
-    }
-  }
-
-  void virtual Mark() {
-    for (int i = 0; i < channel_count; i++) {
-      states[i].markHandled();
-    }
-  }
-
-  protected:
-  bool _hiLo;
-};
-
-class Int8RegIterator {
-public:
-    Int8RegIterator(uint8_t value) {
-      _value = value;
-      _current = 0;
-    }
-    bool HasNext() {
-      if (_current >= 8 ) {
-        return false;
-      }
-      while (!bitRead(_value,_current) && _current < 8) {
-        _current++;
-      }
-      if (_current >= 8 ) {
-        return false;
-      }
-      return bitRead(_value,_current);
-    }
-
-    uint8_t GetCount() {
-      uint8_t count = 0;
-      while (HasNext()) {
-        count++;
-        Step();
-      }
-      Reset();
-      return count;
-    }
-
-    uint16_t Get() {return _current;}
-    void Step() { _current++;}
-    void Reset() {_current = 0;}
-    void Reset(uint8_t value) {
-      _value = value;
-      _current = 0;
-    }
-private:
-  uint8_t _value;
-  uint8_t _current = 0;
-};
-
-#include <ModbusTCP.h>
 
 #define register_cmd 0
 #define register_output 1
@@ -457,6 +146,7 @@ Gesture gestureValidate(uint16_t channel, bool gestureLag) {
                     // расположен на плате Arduino
 #define ledPin  12  // номер выхода светодиода
 
+#include <ModbusTCP.h>
 //Задаём ведомому адрес, последовательный порт, выход управления TX
 Modbus slave(ID, 0, 0); 
 boolean led;
@@ -803,7 +493,7 @@ void load_config_defaults() {
 
     GestureRegister g6 = facade.gestureToSceneMap[5].get();
   g6.coils.procOrOut = true;
-  g6.coils.action = (int)Action::Min;
+  g6.coils.action = (int)Action::On;
   g6.coils.type = (int)Gesture::DoubleHold;
   g6.coils.map = 32;
   facade.gestureToSceneMap[5].set(g6);
@@ -842,7 +532,6 @@ void write_config_to_registers() {
 //////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////
 
-
 void setup() {
   io_setup();
   slave.begin( 19200, SERIAL_8N2 ); 
@@ -859,10 +548,11 @@ uint32_t last_loop_time;
 uint32_t loop_id;
 
 void loop() {
+  uint16_t data[registers_count];
   memcpy(data, regs, sizeof(uint16_t)*registers_count);
   state = slave.poll( data, registers_count);  
-  io_poll_raw();
   memcpy(regs, data, sizeof(uint16_t)*registers_count);
+  io_poll_raw();
   facade.ReadAll();
   facade.Process();
   facade.WriteAll();
@@ -881,29 +571,29 @@ void io_poll_raw() {
   //last_loop_time = millis();
 
   //process command
-  int cmd = data[register_cmd];
+  int cmd = regs[register_cmd].value;
   switch (cmd) {
     case 33:
       // save eprom
       break;
     case 7:
       facade.test();
-      data[register_cmd] = 1;
+      regs[register_cmd].value = 1;
       break;
     case 2:
       // load defaults
       load_config_defaults();
-      data[register_cmd] = 1;
+      regs[register_cmd].value = 1;
       break;
     case 4:
       // read configs from registers
       load_config_from_registers();
-      data[register_cmd] = 1;
+      regs[register_cmd].value = 1;
       break;
     case 5:
       // write configs to registers
       write_config_to_registers();
-      data[register_cmd] = 1;
+      regs[register_cmd].value = 1;
       break;
   }
 
@@ -928,7 +618,7 @@ void processHistory() {
     history.last_trigger_time = current_time;
 
     //hi freq filter
-    if (deltat_trigger < data[register_switch_min_time]) {
+    if (deltat_trigger < regs[register_switch_min_time].value) {
       continue;
     }
 
