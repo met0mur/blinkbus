@@ -1,5 +1,4 @@
-//do not try change this =)
-#define channel_count 8 
+
 
 #pragma once
 #include "bb_primitives.h"
@@ -111,13 +110,16 @@ void load_config_defaults() {
 #define ID   1
 
 #include <ModbusTCP.h>
-Modbus slave(ID, 0, 0);
+Modbus *net;
 
 void setup() {
   for (int i = 0; i < channel_count; i++) {
       pinMode(mapOutputPin(i), OUTPUT); 
   } 
-  slave.begin( 19200, SERIAL_8N2 ); 
+  static Modbus netInstance(ID, 0, 0);
+  net = &netInstance;
+  net->begin( 19200, SERIAL_8N2 ); 
+
   load_config_defaults();
 }
 
@@ -125,7 +127,7 @@ void loop() {
 
   uint16_t data[registers_count];
   memcpy(data, regs, sizeof(uint16_t)*registers_count);
-  slave.poll( data, registers_count);  
+  net->poll( data, registers_count );  
   memcpy(regs, data, sizeof(uint16_t)*registers_count);
 
   io_poll_raw();

@@ -3,6 +3,8 @@
 
 #ifndef registers_count
 #define registers_count 80 
+//do not try change this =)
+#define channel_count 8 
 #endif
 
 ///
@@ -247,7 +249,7 @@ private:
 
 /// uint8_t target = 255; 
 /// forEach8Bit(target, i) {
-///     i.Get();
+///     i.Get();//0-7
 /// }
 ///
 #define forEach8Bit(name,source) for (Int8RegIterator name(source); name.HasNext(); name.Step())
