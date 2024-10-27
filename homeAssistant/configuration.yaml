@@ -1,0 +1,104 @@
+
+# Loads default set of integrations. Do not remove.
+default_config:
+    shell_command
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+  
+modbus:
+- type: tcp
+  host: 192.168.0.1
+  port: 502
+  name: modbusgate1
+  switches:
+    - name: Master
+      slave: 1
+      address: 32
+      write_type: coil
+      verify:
+        delay: 1
+        address: 32
+        input_type: coil
+  lights:
+    - name: All
+      slave: 1
+      address: 1
+      write_type: holding
+      command_on: 255
+      command_off: 0
+    - name: Switch1
+      slave: 1
+      address: 16
+      write_type: coil
+      verify:
+        delay: 1
+        address: 16
+        input_type: coil
+    - name: Switch2
+      slave: 1
+      address: 17
+      write_type: coil
+      verify:
+        delay: 1
+        address: 17
+        input_type: coil
+    - name: Switch3
+      slave: 1
+      address: 18
+      write_type: coil
+      verify:
+        delay: 1
+        address: 18
+        input_type: coil
+    - name: Switch4
+      slave: 1
+      address: 19
+      write_type: coil
+      verify:
+        delay: 1
+        address: 19
+        input_type: coil
+    - name: Switch5
+      slave: 1
+      address: 20
+      write_type: coil
+      verify:
+        delay: 1
+        address: 20
+        input_type: coil
+    - name: Switch6
+      slave: 1
+      address: 21
+      write_type: coil
+      verify:
+        delay: 1
+        address: 21
+        input_type: coil
+    - name: Switch7
+      slave: 1
+      address: 22
+      write_type: coil
+      verify:
+        delay: 1
+        address: 22
+        input_type: coil
+    - name: Switch8
+      slave: 1
+      address: 23
+      write_type: coil
+      verify:
+        delay: 1
+        address: 23
+        input_type: coil
+  binary_sensors:
+    - name: Sens
+      slave: 1
+      address: 24
+      virtual_count: 7
+      input_type: coil
