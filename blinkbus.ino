@@ -1,23 +1,16 @@
 //do not try change this =)
 #define channel_count 8 
 
+#pragma once
 #include "bb_primitives.h"
 #include "bb_proc.h"
 #include "bb_register.h"
 
 
 #define register_cmd 0
-#define register_output 1
 
-struct OutputStates {
-  bool states[channel_count];//0-7
-};
 
-#define register_remote_IS 2
-#define register_switch_IS 3
 #define register_switch_min_time 18
-#define register_switch_gesture_maps 30
-#define register_gesture_maps 40
 
 //channel = 0-7
 int mapOutputPin(int channel) {
@@ -57,8 +50,8 @@ int channelHasPwm(int channel) {
 
 #define history_size 8
 struct InputsStatesHistory {
+//todo states[]->state
   bool states[history_size];
- /// bool output_states[history_size];
   uint16_t timing[history_size];
   uint32_t last_time;
   uint32_t last_trigger_time;
@@ -70,11 +63,12 @@ struct InputsStatesHistory {
 
 InputsStatesHistory list_InputsStatesHistory[channel_count];
 
+//todo inveted input
 Gesture gestureValidate(uint16_t channel, bool gestureLag) {
 
+  //todo use settings
   const uint16_t small = 333;
   const uint16_t loong = 2000;
-
 
   InputsStatesHistory history = list_InputsStatesHistory[channel];
 
@@ -228,6 +222,8 @@ class Facade {
   };
 
   RegisterModel<SceneActivateRegister> sceneActivation{48};
+  //todo remote
+  bool sceneActivationHandled = true;
 
   RegisterModel<CommonRegister> scenes[channel_count] = {
     RegisterModel<CommonRegister>(50),
@@ -278,50 +274,56 @@ class Facade {
       Gesture g = gestureValidate(i,master.get().coils.GestureLag);
       if (g != Gesture::Nope) {
         debugger.setFirstWord((int)g);
-
         //map input to gestures
-        for (Int8RegIterator atgm(analogToGestureMap[i].get().words.first); atgm.HasNext(); atgm.Step()) {
-          int gestureChannel = atgm.Get();
-          GestureRegister gesture = gestureToSceneMap[gestureChannel].get();
+        forEach8Bit(gestureChannel, analogToGestureMap[i].get().words.first) {
+          GestureRegister gesture = gestureToSceneMap[gestureChannel.Get()].get();
           if (gesture.coils.type == (int)g) {
+            //first finded gesture set to activate
             SceneActivateRegister sa;
             sa.value = gesture.value;
-            sa.coils.handled = false;
+            sa.coils.rttCh = gestureChannel.Get();
             sceneActivation.set(sa);
+            sceneActivationHandled = false;
+            break;
+          }
+        }
+      }
+    }
 
-            Action currentAction = static_cast<Action>(gesture.coils.action);
-            //map matched gesture to output
+    if (!sceneActivationHandled) {
+      sceneActivationHandled = true;
+      SceneActivateRegister sa = sceneActivation.get();
 
-            Int8RegIterator gtam(gesture.coils.map);
-            if (gesture.coils.rotate && currentGestureRotation[gestureChannel] > gtam.GetCount() - 1) {
-              currentGestureRotation[gestureChannel] = 0;
-            }
+      Action currentAction = static_cast<Action>(sa.coils.action);
+      //map matched gesture to output
 
-            int sceneIndex = 0;
-            for (gtam.Reset(); gtam.HasNext(); gtam.Step(), sceneIndex++) {
-              
-              //skip inactive scenes
-              if (gesture.coils.rotate && sceneIndex != currentGestureRotation[gestureChannel] ) {
-                continue;
-              }
+      Int8RegIterator gtam(sa.coils.map);
+      if (sa.coils.rotate && currentGestureRotation[sa.coils.rttCh] > gtam.GetCount() - 1) {
+        currentGestureRotation[sa.coils.rttCh] = 0;
+      }
 
-              int sceneChannel = gtam.Get();
-              RegisterModel<CommonRegister> sceneMap = scenes[sceneChannel];
+      int sceneIndex = 0;
+      for (gtam.Reset(); gtam.HasNext(); gtam.Step(), sceneIndex++) {
+        
+        //skip inactive scenes
+        if (sa.coils.rotate && sceneIndex != currentGestureRotation[sa.coils.rttCh] ) {
+          continue;
+        }
 
-              //scene map itetate affected channel
-              for (Int8RegIterator sm(sceneMap.get().words.second); sm.HasNext(); sm.Step()) {
-                int sceneAffectedChannel = sm.Get();
-                bool sceneMapValue = sceneMap.getWordBit(true, sceneAffectedChannel);
+        int sceneChannel = gtam.Get();
+        RegisterModel<CommonRegister> sceneMap = scenes[sceneChannel];
 
-                if (gesture.coils.procOrOut) {
-                  //set action to proccessor
-                  processors[sceneAffectedChannel].signalGesture.set(sceneMapValue ? currentAction : Action::Off);
-                } else {
-                  //apply action to outputs directly
-                  analogOutputs[sceneAffectedChannel].set(sceneMapValue ? ApplyActionToCurrentValue( analogOutputs[sceneAffectedChannel].get(), currentAction ) : LightValue::Off);
-                }
-              }
-            }
+        //scene map itetate affected channel
+        forEach8Bit(affectedChannel, sceneMap.get().words.second) {
+          bool sceneMapValue = sceneMap.getWordBit(true, affectedChannel.Get());
+
+          if (sa.coils.procOrOut) {
+            //set action to proccessor
+            processors[affectedChannel.Get()].signalGesture.set(sceneMapValue ? currentAction : Action::Off);
+          } else {
+            //apply action to outputs directly
+            LightValue currentValue = analogOutputs[affectedChannel.Get()].get();
+            analogOutputs[affectedChannel.Get()].set(sceneMapValue ? ApplyActionToCurrentValue(currentValue, currentAction ) : LightValue::Off);
           }
         }
       }
@@ -340,12 +342,12 @@ class Facade {
         continue;
       }
       //iterate all switch channels
-      for (Int8RegIterator atpm(analogToProcMap[i].get().words.first); atpm.HasNext(); atpm.Step()) {
-        processors[atpm.Get()].signalSwitch.set(analogInputsFiltred.states[i].get());
+      forEach8Bit(procNum, analogToProcMap[i].get().words.first) {
+        processors[procNum.Get()].signalSwitch.set(analogInputsFiltred.states[i].get());
       }
       //iterate all sensor channels
-      for (Int8RegIterator atpm(analogToProcMap[i].get().words.second); atpm.HasNext(); atpm.Step()) {
-        processors[atpm.Get()].signalSensor.set(analogInputsFiltred.states[i].get());
+      forEach8Bit(procNumS, analogToProcMap[i].get().words.second) {
+        processors[procNumS.Get()].signalSensor.set(analogInputsFiltred.states[i].get());
       }
     } 
 
@@ -375,8 +377,8 @@ class Facade {
       }
 
       //iterate all enabled channels
-      for (Int8RegIterator ptom(procToOutputMap[i].get().words.first); ptom.HasNext(); ptom.Step()) {
-        analogOutputs[ptom.Get()].set(processor->outputState.get());
+      forEach8Bit(analogOutputChannel, procToOutputMap[i].get().words.first) {
+        analogOutputs[analogOutputChannel.Get()].set(processor->outputState.get());
       }
 
       processor->outputState.markHandled();
@@ -548,10 +550,14 @@ uint32_t last_loop_time;
 uint32_t loop_id;
 
 void loop() {
+
   uint16_t data[registers_count];
   memcpy(data, regs, sizeof(uint16_t)*registers_count);
+
   state = slave.poll( data, registers_count);  
+
   memcpy(regs, data, sizeof(uint16_t)*registers_count);
+
   io_poll_raw();
   facade.ReadAll();
   facade.Process();

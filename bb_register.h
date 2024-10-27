@@ -46,8 +46,8 @@ union MasterRegister
      bool InvertInput :1;
      bool InvertOutput:1;
      bool GestureLag  :1;
-     bool coil06      :1;
-     bool coil07      :1;
+     bool AnimatePWM  :1;
+     bool SceneAct    :1;
      bool coil08      :1;
      bool coil09      :1;
      bool coil10      :1;
@@ -87,8 +87,7 @@ union SceneActivateRegister
      uint8_t action :3;   //enum Action
      bool procOrOut :1;   
      bool rotate    :1;   //select one from map sequentially
-     bool handled   :1;
-     uint8_t reserve:2;
+     uint8_t rttCh  :3;
      uint8_t map    :8;
    } coils;
    struct {
@@ -245,3 +244,13 @@ private:
   uint8_t _value;
   uint8_t _current = 0;
 };
+
+/// uint8_t target = 255; 
+/// forEach8Bit(target, i) {
+///     i.Get();
+/// }
+///
+#define forEach8Bit(name,source) for (Int8RegIterator name(source); name.HasNext(); name.Step())
+
+//todo
+//#define forEach8Bit(name,source) int name = 0; for (Int8RegIterator t##name(source); t##name.HasNext(), name = t##name.Get(); t##name.Step())
