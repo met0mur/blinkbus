@@ -1,14 +1,14 @@
-
-
 #pragma once
 #include "bb_primitives.h"
 #include "bb_proc.h"
 #include "bb_register.h"
 #include "bb_main.h"
+#include "bb_hardware.h"
 
 #define register_cmd 0
 
-BlinkBus facade;
+BasicHardwareIO hardwareIO; 
+BlinkBus facade(&hardwareIO);
 
 //////////////////////////////////////////////////////////////////
 ////////////////////////  INITIAL SETUP  ///////////////////////
@@ -112,9 +112,10 @@ void load_config_defaults() {
 #include <ModbusTCP.h>
 Modbus *net;
 
+//arduino setup
 void setup() {
   for (int i = 0; i < channel_count; i++) {
-      pinMode(mapOutputPin(i), OUTPUT); 
+      pinMode(hardwareIO.MapOutputPin(i), OUTPUT); 
   } 
   static Modbus netInstance(ID, 0, 0);
   net = &netInstance;
@@ -123,6 +124,7 @@ void setup() {
   load_config_defaults();
 }
 
+//arduino loop
 void loop() {
 
   uint16_t data[registers_count];
@@ -158,7 +160,6 @@ void io_poll_raw() {
       regs[register_cmd].value = 1;
       break;
   }
-
 }
 
 

@@ -2,7 +2,7 @@
 #include <Arduino.h>
 
 #ifndef registers_count
-#define registers_count 80 
+#define registers_count 100 
 //do not try change this =)
 #define channel_count 8 
 #endif

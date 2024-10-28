@@ -1,35 +1,5 @@
 
-//channel = 0-7
-int mapOutputPin(int channel) {
-  switch (channel) {
-    case 0:
-      return 3;
-    case 1:
-      return 5;
-    case 2:
-      return 6;
-    case 3:
-      return 7;//*
-    case 4:
-      return 8;//*
-    case 5:
-      return 9;
-    case 6:
-      return 10;
-    case 7:
-      return 11;
-  }
-}
 
-int channelHasPwm(int channel) {
-  switch (channel) {
-    case 3:
-      return false;
-    case 4:
-     return false;
-  }
-  return true;
-}
 
 
 //////////////////////////////////////////////////////////////////
@@ -49,8 +19,21 @@ struct InputsStatesHistory {
   uint32_t selectedGestureTime;
 };
 
+class BBHardwareIO {
+  public:
+  virtual bool ReadInput(uint8_t channel) = 0;
+  virtual void WriteOutput(uint8_t channel, bool trigger, LightValue lv, uint8_t pwmLevel) = 0;
+};
+
 class BlinkBus {
   public:
+  BlinkBus() {}
+
+  BlinkBus(BBHardwareIO *ioPtr) {
+    *io = *ioPtr;
+  }
+
+  BBHardwareIO *io;
 
   State<LightValue> analogOutputs[channel_count];
 
@@ -145,13 +128,14 @@ class BlinkBus {
     RegisterModel<CommonRegister>(67) 
   };
 
+  //register 90-99 reserved for hardwareIO setup
+
   ZoneProcessor processors[channel_count];
 
   void ReadAll() {
-
     //read analog inputs
     for (int i = 0; i < channel_count; i++) {
-      analogInputs.states[i].set(analogRead(i) > 100);
+      analogInputs.states[i].set(io->ReadInput(i));
     } 
 
     //read remote registers
@@ -364,12 +348,7 @@ Gesture gestureValidate(uint16_t channel, bool gestureLag) {
   void WriteAll() {
     for (int i = 0; i < channel_count; i++) {
       LightValue value = analogOutputs[i].get();
-
-      if (!analogOutputs[i].hasChanges()) {
-        continue;
-      }
-
-      if (channelHasPwm(i)) {
+      if (analogOutputs[i].hasChanges()) {
         int pwm = 255;
         if (value == LightValue::Off) {
           pwm = 0;
@@ -380,13 +359,11 @@ Gesture gestureValidate(uint16_t channel, bool gestureLag) {
           //todo use config
           pwm = 100;
         }
-        analogWrite(mapOutputPin(i), pwm);
         pwmState[i].set(pwm);
-      } else {
-        digitalWrite(mapOutputPin(i), analogOutputs[i].get() == LightValue::On);
+        analogOutputsReg.states[i].set(analogOutputs[i].get() != LightValue::Off);
       }
 
-      analogOutputsReg.states[i].set(analogOutputs[i].get() != LightValue::Off);
+      io->WriteOutput(i, analogOutputs[i].hasChanges(), value, pwmState[i].get().value);
 
       analogOutputs[i].markHandled();
     } 
