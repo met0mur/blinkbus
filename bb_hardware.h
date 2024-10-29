@@ -13,7 +13,7 @@ class BasicHardwareIO : public BBHardwareIO {
       if (ChannelHasPwm(channel)) {
         analogWrite(MapOutputPin(channel), pwmLevel);
       } else {
-        digitalWrite(MapOutputPin(channel), lv == LightValue::On);
+        digitalWrite(MapOutputPin(channel), lv != LightValue::Off);
       }
   };
 

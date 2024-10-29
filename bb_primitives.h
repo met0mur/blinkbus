@@ -1,5 +1,7 @@
 enum class LightValue : uint8_t {Off = 0, On, Half, Min};
 
+#define IsLightValueSemistate(value) ((value) == LightValue::Min || (value) == LightValue::Half)
+
 enum class Gesture : uint8_t {OneClick = 0, DoubleClick, TripleClick, MediumClick, Hold, DoubleHold, Reserve2, Reserve3, Nope};
 
 enum class Action : uint8_t {Off = 0, On, Half, Min, Toggle, Reserve1, Reserve2, Reserve3};

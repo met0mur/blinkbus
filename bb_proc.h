@@ -12,12 +12,12 @@ class ZoneProcessor {
 
   State<LightValue> outputState;
 
-  void Check() {
+  void Step() {
     if (signalSensor.hasValue()) {
       bool ss = signalSensor.get();
       if (ss && _state == LightValue::Off && !stateSensorDayMode) {
         _state = stateSensorEveningMode ? LightValue::Half : LightValue::Min;
-      } else if (!ss && (_state == LightValue::Half || _state == LightValue::Min)) {
+      } else if (!ss && IsLightValueSemistate(_state)) {
         _state = LightValue::Off;
       }
       signalSensor.reset();

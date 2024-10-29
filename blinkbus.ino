@@ -1,7 +1,4 @@
 #pragma once
-#include "bb_primitives.h"
-#include "bb_proc.h"
-#include "bb_register.h"
 #include "bb_main.h"
 #include "bb_hardware.h"
 
@@ -134,7 +131,7 @@ void loop() {
   memcpy(regs, data, sizeof(uint16_t)*registers_count);
 
   io_poll_raw();
-  facade.Process();
+  facade.Process( millis() );
 } 
 
 void io_poll_raw() {
@@ -150,10 +147,6 @@ void io_poll_raw() {
   switch (cmd) {
     case 33:
       // save eprom
-      break;
-    case 7:
-      facade.test();
-      regs[register_cmd].value = 1;
       break;
     case 2:
       // load defaults
