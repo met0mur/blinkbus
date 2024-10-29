@@ -100,6 +100,8 @@ void load_config_defaults() {
 
   facade.intervalSmallMs.set(333);
   facade.intervalBigMs.set(2000);
+
+  hardwareIO.analogLevelThreshold.set(100);
 }
 
 
@@ -126,7 +128,6 @@ void setup() {
 
 //arduino loop
 void loop() {
-
   uint16_t data[registers_count];
   memcpy(data, regs, sizeof(uint16_t)*registers_count);
   net->poll( data, registers_count );  

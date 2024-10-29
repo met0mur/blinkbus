@@ -1,6 +1,7 @@
 class BasicHardwareIO : public BBHardwareIO {
   public:
 
+  RegisterModel<CommonRegister> IOFlags{98};
   RegisterModel<CommonRegister> analogLevelThreshold{99};
 
   //channel number is equals to arduino analog input

@@ -1,15 +1,7 @@
 
-
-
-
-//////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////
-
-  #define history_size 8
+#define history_size 6
 struct InputsStatesHistory {
-//todo states[]->state
-  bool states[history_size];
+  bool state;
   uint16_t timing[history_size];
   uint32_t last_time;
   uint32_t last_trigger_time;
@@ -29,11 +21,11 @@ class BlinkBus {
   public:
   BlinkBus() {}
 
-  BlinkBus(BBHardwareIO *ioPtr) {
-    *io = *ioPtr;
+  BlinkBus(BBHardwareIO* ioPtr) {
+    io = ioPtr;
   }
 
-  BBHardwareIO *io;
+  BBHardwareIO* io;
 
   State<LightValue> analogOutputs[channel_count];
 
@@ -159,39 +151,36 @@ Gesture gestureValidate(uint16_t channel, bool gestureLag) {
     return Gesture::Nope;
   }
 
-  bool (&s)[history_size] = history.states;
   uint16_t (&t)[history_size] = history.timing;
-
-  bool onceClickPattern = !s[2] && s[1] && !s[0];
 
   Gesture newGesture = Gesture::Nope;
 
-  if (onceClickPattern && 
+  if (!history.state && 
       t[0] < small && t[1] > small) {
       newGesture = Gesture::OneClick;
   }
 
-  if (!s[4] && s[3] && onceClickPattern && 
+  if (!history.state && 
       t[0] < small && t[1] < small && t[2] < small && t[3] > small) {
       newGesture = Gesture::DoubleClick;
   }
 
-    if (!s[6] && s[5] && !s[4] && s[3] && onceClickPattern && 
+  if (!history.state && 
       t[0] < small && t[1] < small && t[2] < small && t[3] < small && t[4] < small && t[5] > small) {
       newGesture = Gesture::TripleClick;
   }
 
-  if (onceClickPattern && 
+  if (!history.state && 
       t[0] > small && t[0] < loong && t[1] > small) {
       newGesture = Gesture::MediumClick;
   }
 
-  if (s[4] && !s[3] && s[2] && !s[1] && s[0] && 
+  if (history.state && 
       history.current_delta > loong && t[0] < small && t[1] < small && t[2] > small) {
       newGesture = Gesture::DoubleHold;
   }
 
-  if (!s[1] && s[0] && 
+  if (history.state && 
       history.current_delta > loong && t[0] > small) {
       newGesture = Gesture::Hold;
   }
@@ -214,6 +203,7 @@ Gesture gestureValidate(uint16_t channel, bool gestureLag) {
 }
 
   void Process() {
+
     ReadAll();
 
     //low pass filtring && save timings    
@@ -378,45 +368,43 @@ Gesture gestureValidate(uint16_t channel, bool gestureLag) {
   }
 
   void processHistory() {
+    uint32_t current_time = millis();
+    for (int i = 0; i < channel_count; i++) {
+      InputsStatesHistory history = list_InputsStatesHistory[i];
+      bool current_input = analogInputs.states[i].get();
+      uint16_t deltat = current_time - history.last_time;
+      uint16_t deltat_trigger = current_time - history.last_trigger_time;
 
-  uint32_t current_time = millis();
-  for (int i = 0; i < channel_count; i++) {
-    InputsStatesHistory history = list_InputsStatesHistory[i];
-    bool current_input = analogInputs.states[i].get();
-    uint16_t deltat = current_time - history.last_time;
-    uint16_t deltat_trigger = current_time - history.last_trigger_time;
+      list_InputsStatesHistory[i].current_delta = deltat;
 
-    list_InputsStatesHistory[i].current_delta = deltat;
+      //has no changes
+      if (history.state == current_input) {
+        continue;
+      }
 
-    //has no changes
-    if (history.states[0] == current_input) {
-      continue;
-    }
+      history.last_trigger_time = current_time;
 
-    history.last_trigger_time = current_time;
+      //hi freq filter
+      if (deltat_trigger < lowPassMs.get().value) {
+        continue;
+      }
 
-    //hi freq filter
-    if (deltat_trigger < lowPassMs.get().value) {
-      continue;
-    }
+      //write history shift
+      for (int j = history_size-1; j > 0; j--) {
+        history.timing[j] = history.timing[j-1];
+      }
+      //write history current step
+      history.state = current_input;
+      history.timing[0] = deltat;
+      history.last_time = current_time;
+      history.handledOnce = false;
+      history.selectedGesture = Gesture::Nope;
+      history.selectedGestureTime = 0;
+      history.current_delta = 0;
+      list_InputsStatesHistory[i] = history;
 
-    //write history shift
-    for (int j = history_size-1; j > 0; j--) {
-      history.states[j] = history.states[j-1];
-      history.timing[j] = history.timing[j-1];
-    }
-    //write history current step
-    history.states[0] = current_input;
-    history.timing[0] = deltat;
-    history.last_time = current_time;
-    history.handledOnce = false;
-    history.selectedGesture = Gesture::Nope;
-    history.selectedGestureTime = 0;
-    history.current_delta = 0;
-    list_InputsStatesHistory[i] = history;
-
-    analogInputsFiltred.states[i].set(current_input);
-  } 
+      analogInputsFiltred.states[i].set(current_input);
+  }
 }
 
 };
