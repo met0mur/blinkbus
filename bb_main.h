@@ -11,29 +11,20 @@ class BBHardwareIO {
 
 class BlinkBus {
   public:
-  BlinkBus() {}
 
   BlinkBus(BBHardwareIO* ioPtr) {
-    io = ioPtr;
+    m_io = ioPtr;
   }
 
-  BBHardwareIO* io;
+  SwitchIOModel processorIO             {1, true};
+  SwitchIOModel processorSensorOut      {1, false};
+  RegisterModel<MasterRegister> master  {2};
+  SwitchIOModel analogInputs            {3, true};
+  SwitchIOModel analogOutputsReg        {4, true};
 
-  State<LightValue> analogOutputs[channel_count];
-  ZoneProcessor processors[channel_count];
-  InputChannelProcessor ChannelProcessor[channel_count];
-
-  SwitchIOModel processorIO{1, true};
-  SwitchIOModel processorSensorOut{1, false};
-  RegisterModel<MasterRegister> master{2};
-  SwitchIOModel analogInputs{3, true};
-  SwitchIOModel analogOutputsReg{4, true};
-
-  RegisterModel<CommonRegister> debugger{5};
-  RegisterModel<CommonRegister> modbusSlaveId{8};
-  RegisterModel<CommonRegister> modbusSpeed{9};
-
-  int currentGestureRotation[channel_count];
+  RegisterModel<CommonRegister> debugger      {5};
+  RegisterModel<CommonRegister> modbusSlaveId {8};
+  RegisterModel<CommonRegister> modbusSpeed   {9};
 
   RegisterModel<CommonRegister> analogToProcMap[channel_count] = {
     RegisterModel<CommonRegister>(10),
@@ -111,12 +102,21 @@ class BlinkBus {
   };
 
   //register 90-99 reserved for settings
+  RegisterModel<CommonRegister> PwmMinLevel{90};
+  RegisterModel<CommonRegister> PwmHalfLevel{91};
 
+  void Process( int32_t currentTime ) {
+    ReadAll();
+    ProcessInternal(currentTime);
+    WriteAll();
+  }
 
+  private:
+  
   void ReadAll() {
     //read analog inputs
     for (int i = 0; i < channel_count; i++) {
-      analogInputs.states[i].set(io->ReadInput(i));
+      analogInputs.States[i].Set(m_io->ReadInput(i));
     } 
 
     //read remote registers
@@ -124,39 +124,38 @@ class BlinkBus {
     processorIO.Read();
   }
 
-  void Process( int32_t currentTime ) {
-    ReadAll();
-
+  void ProcessInternal( int32_t currentTime ) {
     //check history for gesture
     for (int i = 0; i < channel_count; i++) {
 
-      if ( !ChannelProcessor[i].Inited ) {
-        ChannelProcessor[i].Init(
-          lowPassMs.get().value, 
-          master.get().coils.GestureLag, 
-          intervalSmallMs.get().value, 
-          intervalBigMs.get().value);
+      //init channel processor
+      if ( !m_channelProcessor[i].Inited ) {
+        m_channelProcessor[i].Init(
+          lowPassMs.Get().value, 
+          master.Get().coils.GestureLag, 
+          intervalSmallMs.Get().value, 
+          intervalBigMs.Get().value);
       }
 
-      ChannelProcessor[i].Step( analogInputs.states[i].get() , currentTime );
+      m_channelProcessor[i].Step( analogInputs.States[i].Get() , currentTime );
 
       //no gestures map
-      if (analogToGestureMap[i].get().words.first == 0) {
+      if (analogToGestureMap[i].Get().words.first == 0) {
         continue;
       }
 
-      Gesture g = ChannelProcessor[i].GestureValidate(currentTime);
+      Gesture g = m_channelProcessor[i].GestureValidate(currentTime);
       if (g != Gesture::Nope) {
-        debugger.setFirstWord((int)g);
+        debugger.SetFirstWord((int)g);
         //map input to gestures
-        forEach8Bit(gestureChannel, analogToGestureMap[i].get().words.first) {
-          GestureRegister gesture = gestureToSceneMap[gestureChannel.Get()].get();
+        forEach8Bit(gestureChannel, analogToGestureMap[i].Get().words.first) {
+          GestureRegister gesture = gestureToSceneMap[gestureChannel.Get()].Get();
           if (gesture.coils.type == (int)g) {
             //first finded gesture set to activate
             SceneActivateRegister sa;
             sa.value = gesture.value;
             sa.coils.rttCh = gestureChannel.Get();
-            sceneActivation.set(sa);
+            sceneActivation.Set(sa);
             sceneActivationHandled = false;
             break;
           }
@@ -167,21 +166,21 @@ class BlinkBus {
     //apply gesture to scene
     if (!sceneActivationHandled) {
       sceneActivationHandled = true;
-      SceneActivateRegister sa = sceneActivation.get();
+      SceneActivateRegister sa = sceneActivation.Get();
 
       Action currentAction = static_cast<Action>(sa.coils.action);
-      //map matched gesture to output
 
+      //handling scene rotation
       Int8RegIterator gtam(sa.coils.map);
-      if (sa.coils.rotate && currentGestureRotation[sa.coils.rttCh] > gtam.GetCount() - 1) {
-        currentGestureRotation[sa.coils.rttCh] = 0;
+      if (sa.coils.rotate && m_gestureRotation[sa.coils.rttCh] > gtam.GetCount() - 1) {
+        m_gestureRotation[sa.coils.rttCh] = 0;
       }
 
       int sceneIndex = 0;
       for (gtam.Reset(); gtam.HasNext(); gtam.Step(), sceneIndex++) {
         
-        //skip inactive scenes
-        if (sa.coils.rotate && sceneIndex != currentGestureRotation[sa.coils.rttCh] ) {
+        //skip inactive scenes 
+        if (sa.coils.rotate && sceneIndex != m_gestureRotation[sa.coils.rttCh] ) {
           continue;
         }
 
@@ -189,16 +188,16 @@ class BlinkBus {
         RegisterModel<CommonRegister> sceneMap = scenes[sceneChannel];
 
         //scene map itetate affected channel
-        forEach8Bit(affectedChannel, sceneMap.get().words.second) {
-          bool sceneMapValue = sceneMap.getWordBit(true, affectedChannel.Get());
+        forEach8Bit(affectedChannel, sceneMap.Get().words.second) {
+          bool sceneMapValue = sceneMap.GetWordBit(true, affectedChannel.Get());
 
           if (sa.coils.procOrOut) {
             //set action to proccessor
-            processors[affectedChannel.Get()].signalGesture.set(sceneMapValue ? currentAction : Action::Off);
+            m_zoneProcessors[affectedChannel.Get()].SignalGesture.Set(sceneMapValue ? currentAction : Action::Off);
           } else {
             //apply action to outputs directly
-            LightValue currentValue = analogOutputs[affectedChannel.Get()].get();
-            analogOutputs[affectedChannel.Get()].set(sceneMapValue ? ApplyActionToCurrentValue(currentValue, currentAction ) : LightValue::Off);
+            LightValue currentValue = m_analogOutputs[affectedChannel.Get()].Get();
+            m_analogOutputs[affectedChannel.Get()].Set(sceneMapValue ? ApplyActionToCurrentValue(currentValue, currentAction ) : LightValue::Off);
           }
         }
       }
@@ -206,86 +205,82 @@ class BlinkBus {
 
     //set master states to proc
     for (int i = 0; i < channel_count; i++) {
-      processors[i].signalMaster.set(master.get().coils.MasterSwitch);
-      processors[i].stateSensorDayMode = master.get().coils.DayMode;
-      processors[i].stateSensorEveningMode = master.get().coils.EveningMode;
+      m_zoneProcessors[i].SignalMaster.Set(master.Get().coils.MasterSwitch);
+      m_zoneProcessors[i].StateSensorDayMode = master.Get().coils.DayMode;
+      m_zoneProcessors[i].StateSensorEveningMode = master.Get().coils.EveningMode;
     }
 
     //map analog input to processors
     for (int i = 0; i < channel_count; i++) {
-      if (!ChannelProcessor[i].FilteredState.hasChanges()) {
+      if (!m_channelProcessor[i].FilteredState.HasChanges()) {
         continue;
       }
       //iterate all switch channels
       
-      forEach8Bit(procNum, analogToProcMap[i].get().words.first) {
-        processors[procNum.Get()].signalSwitch.set(ChannelProcessor[i].FilteredState.get());
+      forEach8Bit(procNum, analogToProcMap[i].Get().words.first) {
+        m_zoneProcessors[procNum.Get()].SignalSwitch.Set(m_channelProcessor[i].FilteredState.Get());
       }
       //iterate all sensor channels
-      forEach8Bit(procNumS, analogToProcMap[i].get().words.second) {
-        processors[procNumS.Get()].signalSensor.set(ChannelProcessor[i].FilteredState.get());
+      forEach8Bit(procNumS, analogToProcMap[i].Get().words.second) {
+        m_zoneProcessors[procNumS.Get()].SignalSensor.Set(m_channelProcessor[i].FilteredState.Get());
       }
 
-      ChannelProcessor[i].FilteredState.markHandled();
+      m_channelProcessor[i].FilteredState.MarkHandled();
     } 
 
     //set remote to processors
     for (int i = 0; i < channel_count; i++) {
-      if (!processorIO.states[i].hasChanges()) {
+      if (!processorIO.States[i].HasChanges()) {
         continue;
       }
-      processors[i].signalSwitch.set(processorIO.states[i].get());
-      processorIO.states[i].markHandled();
+      m_zoneProcessors[i].SignalSwitch.Set(processorIO.States[i].Get());
+      processorIO.States[i].MarkHandled();
     } 
 
-    //run processot and apply results
+    //run processor and apply results
     for (int i = 0; i < channel_count; i++) {
-      ZoneProcessor*processor = &processors[i];
+      ZoneProcessor*processor = &m_zoneProcessors[i];
       
       processor->Step();
-      processorIO.states[i].set(processor->outputState.get() != LightValue::Off);
+      processorIO.States[i].Set(processor->OutputState.Get() != LightValue::Off);
 
-      processorSensorOut.states[i].set(
-        processor->outputState.get() == LightValue::Half || 
-        processor->outputState.get() == LightValue::Min
+      processorSensorOut.States[i].Set(
+        processor->OutputState.Get() == LightValue::Half || 
+        processor->OutputState.Get() == LightValue::Min
         );
 
-      if (!processor->outputState.hasChanges()) {
+      if (!processor->OutputState.HasChanges()) {
         continue;
       }
 
       //iterate all enabled channels
-      forEach8Bit(analogOutputChannel, procToOutputMap[i].get().words.first) {
-        analogOutputs[analogOutputChannel.Get()].set(processor->outputState.get());
+      forEach8Bit(analogOutputChannel, procToOutputMap[i].Get().words.first) {
+        m_analogOutputs[analogOutputChannel.Get()].Set(processor->OutputState.Get());
       }
 
-      processor->outputState.markHandled();
+      processor->OutputState.MarkHandled();
     }
-
-    WriteAll();
   }
 
   void WriteAll() {
     for (int i = 0; i < channel_count; i++) {
-      LightValue value = analogOutputs[i].get();
-      if (analogOutputs[i].hasChanges()) {
+      LightValue value = m_analogOutputs[i].Get();
+      if (m_analogOutputs[i].HasChanges()) {
         int pwm = 255;
         if (value == LightValue::Off) {
           pwm = 0;
         } else if (value == LightValue::Half) {
-          //todo use config
-          pwm = 192;
+          pwm = PwmHalfLevel.Get().value;
         } else if (value == LightValue::Min) {
-          //todo use config
-          pwm = 100;
+          pwm = PwmMinLevel.Get().value;
         }
-        pwmState[i].set(pwm);
-        analogOutputsReg.states[i].set(analogOutputs[i].get() != LightValue::Off);
+        pwmState[i].Set(pwm);
+        analogOutputsReg.States[i].Set(value != LightValue::Off);
       }
 
-      io->WriteOutput(i, analogOutputs[i].hasChanges(), value, pwmState[i].get().value);
+      m_io->WriteOutput(i, m_analogOutputs[i].HasChanges(), value, pwmState[i].Get().value);
 
-      analogOutputs[i].markHandled();
+      m_analogOutputs[i].MarkHandled();
     } 
 
     processorIO.Write();
@@ -293,4 +288,10 @@ class BlinkBus {
     processorSensorOut.Write();
     analogOutputsReg.Write();
   }
+
+  BBHardwareIO* m_io;
+  State<LightValue> m_analogOutputs[channel_count];
+  ZoneProcessor m_zoneProcessors[channel_count];
+  InputChannelProcessor m_channelProcessor[channel_count];
+  int m_gestureRotation[channel_count];
 };

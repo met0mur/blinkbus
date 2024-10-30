@@ -9,7 +9,7 @@ I understand that you can argue on every point.
 
 ## Concept
 
-Each input and output, the direction of movement of the signal, the intermediate state, remote control - everything can be controlled through a specific register. The sewn-up logic of the work provides the tools. Configuration via registers - interaction of tools.
+Each input and output, the direction of movement of the signal, the intermediate state, remote control - everything can be controlled through a specific register. Application logic of the work provides the tools. Configuration via registers - interaction of tools.
 
 An end-user device that can control the zones and scenarios assigned to it, regardless of the presence of external control. ~~It looks like I invented a PLC~~.
 
@@ -50,6 +50,7 @@ Example. The simplest use case is the end-to-end transmission of the signal from
 IMG
 
 ##Hardware
+
 It was tested only on the Arduino Nano. 
 
 

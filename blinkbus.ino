@@ -13,92 +13,92 @@ BlinkBus facade(&hardwareIO);
 
 void load_config_defaults() {
   for (int i = 0; i < channel_count - 1; i++) {
-    facade.analogToProcMap[i].setFirstWord( bitWrite(facade.analogToProcMap[i].get().words.first, i, true));
+    facade.analogToProcMap[i].SetFirstWord( bitWrite(facade.analogToProcMap[i].Get().words.first, i, true));
   }
   for (int i = 0; i < channel_count; i++) {
-    facade.procToOutputMap[i].setFirstWord( bitWrite(facade.procToOutputMap[i].get().words.first, i, true));
+    facade.procToOutputMap[i].SetFirstWord( bitWrite(facade.procToOutputMap[i].Get().words.first, i, true));
   }
 
   regs[18].value = 50;
-  MasterRegister master = facade.master.get();
+  MasterRegister master = facade.master.Get();
   master.coils.MasterSwitch = 1;
   master.coils.GestureLag = 1;
-  facade.master.set(master);
+  facade.master.Set(master);
     
 
-  CommonRegister tg8 = facade.analogToGestureMap[7].get();
+  CommonRegister tg8 = facade.analogToGestureMap[7].Get();
   tg8.coils.coil00 = 1;
   tg8.coils.coil01 = 1;
   tg8.coils.coil02 = 1;
   tg8.coils.coil03 = 1;
   tg8.coils.coil04 = 1;
   tg8.coils.coil05 = 1;
-  facade.analogToGestureMap[7].set(tg8);
+  facade.analogToGestureMap[7].Set(tg8);
 
-  GestureRegister g1 = facade.gestureToSceneMap[0].get();
+  GestureRegister g1 = facade.gestureToSceneMap[0].Get();
   g1.coils.procOrOut = true;
   g1.coils.action = (int)Action::Toggle;
   g1.coils.type = (int)Gesture::OneClick;
   g1.coils.map = 1;
-  facade.gestureToSceneMap[0].set(g1);
+  facade.gestureToSceneMap[0].Set(g1);
 
-  GestureRegister g2 = facade.gestureToSceneMap[1].get();
+  GestureRegister g2 = facade.gestureToSceneMap[1].Get();
   g2.coils.procOrOut = true;
   g2.coils.action = (int)Action::Toggle;
   g2.coils.type = (int)Gesture::DoubleClick;
   g2.coils.map = 2;
-  facade.gestureToSceneMap[1].set(g2);
+  facade.gestureToSceneMap[1].Set(g2);
 
-  GestureRegister g3 = facade.gestureToSceneMap[2].get();
+  GestureRegister g3 = facade.gestureToSceneMap[2].Get();
   g3.coils.procOrOut = true;
   g3.coils.action = (int)Action::Toggle;
   g3.coils.type = (int)Gesture::TripleClick;
   g3.coils.map = 4;
-  facade.gestureToSceneMap[2].set(g3);
+  facade.gestureToSceneMap[2].Set(g3);
 
-  GestureRegister g4 = facade.gestureToSceneMap[3].get();
+  GestureRegister g4 = facade.gestureToSceneMap[3].Get();
   g4.coils.procOrOut = true;
   g4.coils.action = (int)Action::On;
   g4.coils.type = (int)Gesture::MediumClick;
   g4.coils.map = 8;
-  facade.gestureToSceneMap[3].set(g4);
+  facade.gestureToSceneMap[3].Set(g4);
 
-  GestureRegister g5 = facade.gestureToSceneMap[4].get();
+  GestureRegister g5 = facade.gestureToSceneMap[4].Get();
   g5.coils.procOrOut = true;
   g5.coils.action = (int)Action::Toggle;
   g5.coils.type = (int)Gesture::Hold;
   g5.coils.map = 16;
-  facade.gestureToSceneMap[4].set(g5);
+  facade.gestureToSceneMap[4].Set(g5);
 
-    GestureRegister g6 = facade.gestureToSceneMap[5].get();
+    GestureRegister g6 = facade.gestureToSceneMap[5].Get();
   g6.coils.procOrOut = true;
   g6.coils.action = (int)Action::On;
   g6.coils.type = (int)Gesture::DoubleHold;
   g6.coils.map = 32;
-  facade.gestureToSceneMap[5].set(g6);
+  facade.gestureToSceneMap[5].Set(g6);
 
-  facade.scenes[0].setFirstWord(1);
-  facade.scenes[0].setSecondWord(7);
+  facade.scenes[0].SetFirstWord(1);
+  facade.scenes[0].SetSecondWord(7);
 
-  facade.scenes[1].setFirstWord(2);
-  facade.scenes[1].setSecondWord(7);
+  facade.scenes[1].SetFirstWord(2);
+  facade.scenes[1].SetSecondWord(7);
 
-  facade.scenes[2].setFirstWord(4);
-  facade.scenes[2].setSecondWord(7);
+  facade.scenes[2].SetFirstWord(4);
+  facade.scenes[2].SetSecondWord(7);
 
-  facade.scenes[3].setFirstWord(0);
-  facade.scenes[3].setSecondWord(7);
+  facade.scenes[3].SetFirstWord(0);
+  facade.scenes[3].SetSecondWord(7);
 
-  facade.scenes[4].setFirstWord(16);
-  facade.scenes[4].setSecondWord(16);
+  facade.scenes[4].SetFirstWord(16);
+  facade.scenes[4].SetSecondWord(16);
 
-  facade.scenes[5].setFirstWord(32);
-  facade.scenes[5].setSecondWord(32);
+  facade.scenes[5].SetFirstWord(32);
+  facade.scenes[5].SetSecondWord(32);
 
-  facade.intervalSmallMs.set(333);
-  facade.intervalBigMs.set(2000);
+  facade.intervalSmallMs.Set(333);
+  facade.intervalBigMs.Set(2000);
 
-  hardwareIO.analogLevelThreshold.set(100);
+  hardwareIO.AnalogLevelThreshold.Set(100);
 }
 
 
@@ -145,8 +145,9 @@ void io_poll_raw() {
   //process command
   int cmd = regs[register_cmd].value;
   switch (cmd) {
-    case 33:
+    case 734:
       // save eprom
+      regs[register_cmd].value = 1;
       break;
     case 2:
       // load defaults

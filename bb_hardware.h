@@ -2,11 +2,11 @@ class BasicHardwareIO : public BBHardwareIO {
   public:
 
   RegisterModel<CommonRegister> IOFlags{98};
-  RegisterModel<CommonRegister> analogLevelThreshold{99};
+  RegisterModel<CommonRegister> AnalogLevelThreshold{99};
 
   //channel number is equals to arduino analog input
   bool ReadInput(uint8_t channel) override {
-    return analogRead(channel) > analogLevelThreshold.get().value;
+    return analogRead(channel) > AnalogLevelThreshold.Get().value;
   };
 
   void WriteOutput(uint8_t channel, bool trigger, LightValue lv, uint8_t pwmLevel) override {

@@ -2,49 +2,46 @@
 class ZoneProcessor {
   public:
 
-  bool stateSensorDayMode;
-  bool stateSensorEveningMode;
+  bool StateSensorDayMode;
+  bool StateSensorEveningMode;
 
-  Signal<bool> signalMaster;
-  Signal<bool> signalSwitch;
-  Signal<bool> signalSensor;
-  Signal<Action> signalGesture;
+  Signal<bool> SignalMaster;
+  Signal<bool> SignalSwitch;
+  Signal<bool> SignalSensor;
+  Signal<Action> SignalGesture;
 
-  State<LightValue> outputState;
+  State<LightValue> OutputState;
 
   void Step() {
-    if (signalSensor.hasValue()) {
-      bool ss = signalSensor.get();
-      if (ss && _state == LightValue::Off && !stateSensorDayMode) {
-        _state = stateSensorEveningMode ? LightValue::Half : LightValue::Min;
-      } else if (!ss && IsLightValueSemistate(_state)) {
-        _state = LightValue::Off;
+    if (SignalSensor.HasValue()) {
+      bool ss = SignalSensor.Use();
+      if (ss && m_state == LightValue::Off && !StateSensorDayMode) {
+        m_state = StateSensorEveningMode ? LightValue::Half : LightValue::Min;
+      } else if (!ss && IsLightValueSemistate(m_state)) {
+        m_state = LightValue::Off;
       }
-      signalSensor.reset();
     }
 
-    if (signalSwitch.hasValue()) {
-      bool ssw = signalSwitch.get();
-      if (ssw && _state == LightValue::Off) {
-        _state = LightValue::On;
-      } else if (!ssw && _state != LightValue::Off) {
-        _state = LightValue::Off;
+    if (SignalSwitch.HasValue()) {
+      bool ssw = SignalSwitch.Use();
+      if (ssw && m_state == LightValue::Off) {
+        m_state = LightValue::On;
+      } else if (!ssw && m_state != LightValue::Off) {
+        m_state = LightValue::Off;
       }
-      signalSwitch.reset();
     }
 
-    if (signalMaster.hasValue() && !signalMaster.get()) {
-      _state = LightValue::Off;
+    if (SignalMaster.HasValue() && !SignalMaster.Use()) {
+      m_state = LightValue::Off;
     }
 
-    if (signalGesture.hasValue()) {
-      _state = ApplyActionToCurrentValue(_state, signalGesture.get());
-      signalGesture.reset();
+    if (SignalGesture.HasValue()) {
+      m_state = ApplyActionToCurrentValue(m_state, SignalGesture.Use());
     }
 
-    outputState.set(_state);
+    OutputState.Set(m_state);
   }
 
   private:
-  LightValue _state;
+  LightValue m_state;
 };

@@ -48,7 +48,7 @@ class InputChannelProcessor {
     m_selectedGestureTime = 0;
     m_currentDelta = 0;
 
-    FilteredState.set(currentInput);
+    FilteredState.Set(currentInput);
   }
 
 //todo inverted input

@@ -24,35 +24,39 @@ LightValue ApplyActionToCurrentValue(LightValue currentValue, Action currentActi
 template <typename T>
 class Signal {
   public:
-  T get() {return _value;}
-  bool hasValue() {return _has_value;}
-  void reset() {_has_value = false;}
+  T Get() {return m_value;}
+  T Use() {
+    Reset();
+    return m_value;
+  }
+  bool HasValue() {return m_hasValue;}
+  void Reset() {m_hasValue = false;}
 
-  void set(T value) {
-    _has_value = true;
-    _value = value;
+  void Set(T value) {
+    m_hasValue = true;
+    m_value = value;
   }
 
   private:
-  bool _has_value;
-  T _value;
+  bool  m_hasValue;
+  T     m_value;
 };
 
 template <typename T>
 class State {
   public:
-  T get() {return _value;}
-  bool hasChanges() {return _has_changes;}
-  void markHandled() {_has_changes = false;}
+  T Get() {return m_value;}
+  bool HasChanges() {return m_hasChanges;}
+  void MarkHandled() {m_hasChanges = false;}
 
-  void set(T value) {
-    if (_value != value) {
-      _has_changes = true;
+  void Set(T value) {
+    if (m_value != value) {
+      m_hasChanges = true;
     }
-    _value = value;
+    m_value = value;
   }
 
   private:
-  bool _has_changes;
-  T _value;
+  bool  m_hasChanges;
+  T     m_value;
 };

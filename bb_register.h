@@ -3,9 +3,10 @@
 
 #ifndef registers_count
 #define registers_count 100 
+#endif
+
 //do not try change this =)
 #define channel_count 8 
-#endif
 
 ///
 /// Easy way to manage modbus register - union
@@ -113,36 +114,38 @@ template <typename T>
 class RegisterModel {
   public:
 
-  RegisterModel(uint8_t reg) {_reg = reg;}
+  RegisterModel(uint8_t reg) {
+    m_registerNum = reg;
+    }
 
-  T get() {
+  T Get() {
     T t;
-    t.value = regs[_reg].value;
+    t.value = regs[m_registerNum].value;
     return t;
   }
 
-  void set(T t) {
-    regs[_reg].value = t.value;
+  void Set(T t) {
+    regs[m_registerNum].value = t.value;
   }
 
-  void set(uint16_t t) {
-    regs[_reg].value = t;
+  void Set(uint16_t t) {
+    regs[m_registerNum].value = t;
   }
 
-  void setFirstWord(uint8_t w) {
-    regs[_reg].words.first = w;
+  void SetFirstWord(uint8_t w) {
+    regs[m_registerNum].words.first = w;
   }
 
-  void setSecondWord(uint8_t w) {
-    regs[_reg].words.second = w;
+  void SetSecondWord(uint8_t w) {
+    regs[m_registerNum].words.second = w;
   }
 
-  bool getWordBit(bool hiLo, uint8_t bit) {
-    return bitRead(hiLo ? regs[_reg].words.first : regs[_reg].words.second,bit);
+  bool GetWordBit(bool hiLo, uint8_t bit) {
+    return bitRead(hiLo ? regs[m_registerNum].words.first : regs[m_registerNum].words.second,bit);
   }
 
   protected:
-  uint8_t _reg;
+  uint8_t m_registerNum;
 };
 
 //
@@ -152,40 +155,40 @@ class RegisterModel {
 class SwitchIOModel {
   public:
 
-  SwitchIOModel(uint16_t regNumber, bool hiLo) : reg(regNumber) {
-      _hiLo = hiLo;
+  SwitchIOModel(uint16_t regNumber, bool hiLo) : Reg(regNumber) {
+      m_hiLo = hiLo;
   }
 
-  RegisterModel<CommonRegister> reg;
-  State<bool> states[channel_count];
+  RegisterModel<CommonRegister> Reg;
+  State<bool> States[channel_count];
 
   void virtual Read() {
     for (int i = 0; i < channel_count; i++) {
-      int v = _hiLo ? reg.get().words.first : reg.get().words.second;
-      states[i].set(bitRead(v,i));
+      int v = m_hiLo ? Reg.Get().words.first : Reg.Get().words.second;
+      States[i].Set(bitRead(v,i));
     }
   }
 
   void virtual Write() {
     int value = 0;
     for (int i = 0; i < channel_count; i++) {
-      value = bitWrite(value,i, states[i].get());
-      if (_hiLo) {
-        reg.setFirstWord(value);
+      value = bitWrite(value,i, States[i].Get());
+      if (m_hiLo) {
+        Reg.SetFirstWord(value);
       } else {
-        reg.setSecondWord(value);
+        Reg.SetSecondWord(value);
       }
     }
   }
 
   void virtual Mark() {
     for (int i = 0; i < channel_count; i++) {
-      states[i].markHandled();
+      States[i].MarkHandled();
     }
   }
 
   protected:
-  bool _hiLo;
+  bool m_hiLo;
 };
 
 ///
@@ -209,20 +212,20 @@ class SwitchIOModel {
 class Int8RegIterator {
 public:
     Int8RegIterator(uint8_t value) {
-      _value = value;
-      _current = 0;
+      m_value = value;
+      m_current = 0;
     }
     bool HasNext() {
-      if (_current >= 8 ) {
+      if (m_current >= 8 ) {
         return false;
       }
-      while (!bitRead(_value,_current) && _current < 8) {
-        _current++;
+      while (!bitRead(m_value,m_current) && m_current < 8) {
+        m_current++;
       }
-      if (_current >= 8 ) {
+      if (m_current >= 8 ) {
         return false;
       }
-      return bitRead(_value,_current);
+      return bitRead(m_value,m_current);
     }
 
     uint8_t GetCount() {
@@ -235,18 +238,19 @@ public:
       return count;
     }
 
-    uint16_t Get() {return _current;}
-    void Step() { _current++;}
-    void Reset() {_current = 0;}
+    uint16_t Get() {return m_current;}
+    void Step() { m_current++;}
+    void Reset() {m_current = 0;}
     void Reset(uint8_t value) {
-      _value = value;
-      _current = 0;
+      m_value = value;
+      m_current = 0;
     }
 private:
-  uint8_t _value;
-  uint8_t _current = 0;
+  uint8_t m_value;
+  uint8_t m_current = 0;
 };
 
+///
 /// uint8_t target = 255; 
 /// forEach8Bit(target, i) {
 ///     i.Get();//0-7
