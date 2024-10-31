@@ -13,7 +13,7 @@ Each input and output, the direction of movement of the signal, the intermediate
 
 An end-user device that can control the zones and scenarios assigned to it, regardless of the presence of external control. ~~It looks like I invented a PLC~~.
 
-##Possible usage scenarios
+## Possible usage scenarios
 
 * Turn off the lighting with remote control
 * Pass-through switch on the button without a lock
@@ -27,34 +27,35 @@ An end-user device that can control the zones and scenarios assigned to it, rega
 * Direct PWM control
 * Remote control in all scenarios (e.g. Home Assistant)
 
-##Restrictions
+## Restrictions
 
 Wiring topology. The wiring should be made in the form of beams from the switch cabinet to wall switches and lamps.
 
-In this implementation, we have only 8 pieces each. Entrances, exits, zones, scenes, gestures. You will have to install several devices on a house of 100m2.
+In this implementation, we have only 8 pieces each. Inputs, outputs, zones, scenes, gestures. You will have to install several devices on a house of 100m2.
 
-##Terms and blocks
+## Terms and blocks
 
 * **The input and output of the** signal correspond to the specific pins of the arduino.
 * **The level of illumination**. To simplify it, 4 levels are accepted. Off, On and two intermediate ones for working with pwm.
 * **The processor of the zone**. A block that controls the behavior of one "zone" of lighting. It takes into account all incoming signals, sucks the state and changes it if necessary.
 * **Gesture**. A certain sequence of input signals that matches the specified ones. One click. Double. Triple. A long click. Hold. Click+Hold. When performing a gesture, a scene can be activated.
-* **Scene**. A predefined set of zones or exits.
+* **Scene**. A predefined set of zones or outputs.
 * **Action**. The action is applied to the scene. One scene can be executed with different actions. Enabling. Shutdown. Switching. Rotation.
 
-##Setting up
+_The diagram shows the logic blocks, the direction of movement of the signal and the registers that control them._
+![contr](docs/BLINKBUS_Control_Flow_&_Registers.svg)
+
+## Setting up
 
 The operation scenario is configured by setting the values in the appropriate registers. Most settings look like a bit mask, where each bit corresponds to the output channel.
 
-Example. The simplest use case is the end-to-end transmission of the signal from the input to the output. This mapping looks like a ladder in bitwise form. The screenshots show ModbusPoll software.
-IMG
+Example. The simplest use case is the end-to-end transmission of the signal from the input to the output. This mapping looks like a ladder in bitwise form. _The screenshots show ModbusPoll software._
+![bit_ladder](docs/bit_ladder.png)
 
-##Hardware
+## Hardware
 
 It was tested only on the Arduino Nano. 
 
 
-
+## T
 Used modbus library -> https://github.com/EngDial/ModbusTCP
-
-![contr](docs/BLINKBUS_Control_Flow_&_Registers.svg)
