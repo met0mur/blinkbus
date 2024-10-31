@@ -17,7 +17,7 @@ class BlinkBus {
   }
 
   SwitchIOModel processorIO             {1, true};
-  SwitchIOModel processorSensorOut      {1, false};
+  SwitchIOModel processorSensorIO       {1, false};
   RegisterModel<MasterRegister> master  {2};
   SwitchIOModel analogInputs            {3, true};
   SwitchIOModel analogOutputsReg        {4, true};
@@ -39,15 +39,15 @@ class BlinkBus {
 
   RegisterModel<CommonRegister> lowPassMs{18};
 
-  RegisterModel<CommonRegister> procToOutputMap[channel_count] = {
-    RegisterModel<CommonRegister>(20),
-    RegisterModel<CommonRegister>(21),
-    RegisterModel<CommonRegister>(22),
-    RegisterModel<CommonRegister>(23),
-    RegisterModel<CommonRegister>(24),
-    RegisterModel<CommonRegister>(25),
-    RegisterModel<CommonRegister>(26),
-    RegisterModel<CommonRegister>(27) 
+  RegisterModel<ZoneToAnalogRegister> procToOutputMap[channel_count] = {
+    RegisterModel<ZoneToAnalogRegister>(20),
+    RegisterModel<ZoneToAnalogRegister>(21),
+    RegisterModel<ZoneToAnalogRegister>(22),
+    RegisterModel<ZoneToAnalogRegister>(23),
+    RegisterModel<ZoneToAnalogRegister>(24),
+    RegisterModel<ZoneToAnalogRegister>(25),
+    RegisterModel<ZoneToAnalogRegister>(26),
+    RegisterModel<ZoneToAnalogRegister>(27) 
   };
 
   RegisterModel<CommonRegister> intervalSmallMs{28};
@@ -64,6 +64,8 @@ class BlinkBus {
     RegisterModel<CommonRegister>(37) 
   };
 
+  RegisterModel<CommonRegister> InvertedGesture         {38};
+
   RegisterModel<GestureRegister> gestureToSceneMap[channel_count] = {
     RegisterModel<GestureRegister>(40),
     RegisterModel<GestureRegister>(41),
@@ -75,9 +77,8 @@ class BlinkBus {
     RegisterModel<GestureRegister>(47) 
   };
 
-  RegisterModel<SceneActivateRegister> sceneActivation{48};
-  //todo remote
-  bool sceneActivationHandled = true;
+  RegisterModel<SceneActivateRegister> sceneActivation  {48};
+  CoilModel SceneActivationHandled                      {49, 8};
 
   RegisterModel<CommonRegister> scenes[channel_count] = {
     RegisterModel<CommonRegister>(50),
@@ -101,9 +102,10 @@ class BlinkBus {
     RegisterModel<CommonRegister>(67) 
   };
 
-  //register 90-99 reserved for settings
   RegisterModel<CommonRegister> PwmMinLevel{90};
   RegisterModel<CommonRegister> PwmHalfLevel{91};
+  
+  //register 90-99 reserved for settings
 
   void Process( int32_t currentTime ) {
     ReadAll();
@@ -122,6 +124,9 @@ class BlinkBus {
     //read remote registers
     processorIO.Mark();
     processorIO.Read();
+
+    processorSensorIO.Mark();
+    processorSensorIO.Read();
   }
 
   void ProcessInternal( int32_t currentTime ) {
@@ -134,7 +139,8 @@ class BlinkBus {
           lowPassMs.Get().value, 
           master.Get().coils.GestureLag, 
           intervalSmallMs.Get().value, 
-          intervalBigMs.Get().value);
+          intervalBigMs.Get().value,
+          InvertedGesture.GetWordBit(true, i));
       }
 
       m_channelProcessor[i].Step( analogInputs.States[i].Get() , currentTime );
@@ -156,7 +162,7 @@ class BlinkBus {
             sa.value = gesture.value;
             sa.coils.rttCh = gestureChannel.Get();
             sceneActivation.Set(sa);
-            sceneActivationHandled = false;
+            SceneActivationHandled.Set(false);
             break;
           }
         }
@@ -164,8 +170,8 @@ class BlinkBus {
     }
 
     //apply gesture to scene
-    if (!sceneActivationHandled) {
-      sceneActivationHandled = true;
+    if (!SceneActivationHandled.Get()) {
+      SceneActivationHandled.Set(true);
       SceneActivateRegister sa = sceneActivation.Get();
 
       Action currentAction = static_cast<Action>(sa.coils.action);
@@ -233,8 +239,18 @@ class BlinkBus {
       if (!processorIO.States[i].HasChanges()) {
         continue;
       }
+
       m_zoneProcessors[i].SignalSwitch.Set(processorIO.States[i].Get());
       processorIO.States[i].MarkHandled();
+    } 
+
+    for (int i = 0; i < channel_count; i++) {
+      if (!processorSensorIO.States[i].HasChanges()) {
+        continue;
+      }
+
+      m_zoneProcessors[i].SignalSensor.Set(processorSensorIO.States[i].Get());
+      processorSensorIO.States[i].MarkHandled();
     } 
 
     //run processor and apply results
@@ -242,19 +258,16 @@ class BlinkBus {
       ZoneProcessor*processor = &m_zoneProcessors[i];
       
       processor->Step();
-      processorIO.States[i].Set(processor->OutputState.Get() != LightValue::Off);
 
-      processorSensorOut.States[i].Set(
-        processor->OutputState.Get() == LightValue::Half || 
-        processor->OutputState.Get() == LightValue::Min
-        );
+      processorIO.States[i].Set(processor->OutputState.Get() != LightValue::Off);
+      processorSensorIO.States[i].Set(IsLightValueSemistate(processor->OutputState.Get()));
 
       if (!processor->OutputState.HasChanges()) {
         continue;
       }
 
       //iterate all enabled channels
-      forEach8Bit(analogOutputChannel, procToOutputMap[i].Get().words.first) {
+      forEach8Bit(analogOutputChannel, procToOutputMap[i].Get().coils.Map) {
         m_analogOutputs[analogOutputChannel.Get()].Set(processor->OutputState.Get());
       }
 
@@ -285,7 +298,7 @@ class BlinkBus {
 
     processorIO.Write();
     analogInputs.Write();
-    processorSensorOut.Write();
+    processorSensorIO.Write();
     analogOutputsReg.Write();
   }
 

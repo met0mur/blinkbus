@@ -12,7 +12,7 @@ BlinkBus facade(&hardwareIO);
 //////////////////////////////////////////////////////////////////
 
 void load_config_defaults() {
-  for (int i = 0; i < channel_count - 1; i++) {
+  for (int i = 0; i < channel_count; i++) {
     facade.analogToProcMap[i].SetFirstWord( bitWrite(facade.analogToProcMap[i].Get().words.first, i, true));
   }
   for (int i = 0; i < channel_count; i++) {
@@ -25,6 +25,7 @@ void load_config_defaults() {
   master.coils.GestureLag = 1;
   facade.master.Set(master);
     
+  facade.InvertedGesture.SetWordBit(false, 7, true);
 
   CommonRegister tg8 = facade.analogToGestureMap[7].Get();
   tg8.coils.coil00 = 1;

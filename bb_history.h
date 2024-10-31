@@ -8,14 +8,14 @@ class InputChannelProcessor {
   bool        Inited;
   State<bool> FilteredState;
 
-  void Init (uint16_t lowPass, bool gestureLag, uint16_t intervalSmallMs, uint16_t  intervalBigMs) {
+  void Init (uint16_t lowPass, bool gestureLag, uint16_t intervalSmallMs, uint16_t  intervalBigMs, bool invert) {
     m_lowPassMs = lowPass;
     m_gestureLag = gestureLag;
     m_intervalSmallMs = intervalSmallMs;
     m_intervalBigMs = intervalBigMs;
+    m_invert = invert;
     Inited = true;
   }
-
   
   void Step( bool currentInput, uint32_t currentTime ) {
     uint16_t deltat = currentTime - m_lastTime;
@@ -51,66 +51,78 @@ class InputChannelProcessor {
     FilteredState.Set(currentInput);
   }
 
-//todo inverted input
-Gesture GestureValidate(uint32_t currentTime) {
+  Gesture GestureValidate(uint32_t currentTime) {
+    Gesture output;
+    output = GestureValidateInternal(currentTime, false);
+    if (output == Gesture::Nope && m_invert) {
+      output = GestureValidateInternal(currentTime, true);
+    }
+    return output;
+  }
 
-  const uint16_t small = m_intervalSmallMs;
-  const uint16_t loong = m_intervalBigMs;
+  private:
+  Gesture GestureValidateInternal(uint32_t currentTime, bool inverted) {
 
-  if (m_handledOnce) {
+    const uint16_t small = m_intervalSmallMs;
+    const uint16_t loong = m_intervalBigMs;
+
+    if (m_handledOnce || currentTime < loong) {
+      return Gesture::Nope;
+    }
+
+    uint16_t (&t)[history_size] = m_timing;
+
+    Gesture newGesture = Gesture::Nope;
+    bool state = m_state;
+    if (inverted) {
+      state = !state;
+    }
+
+    if (!state && 
+        t[0] < small && t[1] > small) {
+        newGesture = Gesture::OneClick;
+    }
+
+    if (!state && 
+        t[0] < small && t[1] < small && t[2] < small && t[3] > small) {
+        newGesture = Gesture::DoubleClick;
+    }
+
+    if (!state && 
+        t[0] < small && t[1] < small && t[2] < small && t[3] < small && t[4] < small && t[5] > small) {
+        newGesture = Gesture::TripleClick;
+    }
+
+    if (!state && 
+        t[0] > small && t[0] < loong && t[1] > small) {
+        newGesture = Gesture::MediumClick;
+    }
+
+    if (!m_invert && m_state && 
+        m_currentDelta > loong && t[0] < small && t[1] < small && t[2] > small) {
+        newGesture = Gesture::DoubleHold;
+    }
+
+    if (!m_invert && m_state && 
+        m_currentDelta > loong && t[0] > small) {
+        newGesture = Gesture::Hold;
+    }
+
+    if (newGesture != Gesture::Nope && m_selectedGesture != newGesture) {
+      m_selectedGesture = newGesture;
+      m_selectedGestureTime = currentTime;
+    }
+
+    if (!m_gestureLag || 
+          m_selectedGesture != Gesture::Nope && 
+          currentTime - m_selectedGestureTime > small) {
+      m_handledOnce = true;
+      return m_selectedGesture;
+    }
+
     return Gesture::Nope;
   }
 
-  uint16_t (&t)[history_size] = m_timing;
-
-  Gesture newGesture = Gesture::Nope;
-
-  if (!m_state && 
-      t[0] < small && t[1] > small) {
-      newGesture = Gesture::OneClick;
-  }
-
-  if (!m_state && 
-      t[0] < small && t[1] < small && t[2] < small && t[3] > small) {
-      newGesture = Gesture::DoubleClick;
-  }
-
-  if (!m_state && 
-      t[0] < small && t[1] < small && t[2] < small && t[3] < small && t[4] < small && t[5] > small) {
-      newGesture = Gesture::TripleClick;
-  }
-
-  if (!m_state && 
-      t[0] > small && t[0] < loong && t[1] > small) {
-      newGesture = Gesture::MediumClick;
-  }
-
-  if (m_state && 
-      m_currentDelta > loong && t[0] < small && t[1] < small && t[2] > small) {
-      newGesture = Gesture::DoubleHold;
-  }
-
-  if (m_state && 
-      m_currentDelta > loong && t[0] > small) {
-      newGesture = Gesture::Hold;
-  }
-
-  if (newGesture != Gesture::Nope && m_selectedGesture != newGesture) {
-    m_selectedGesture = newGesture;
-    m_selectedGestureTime = currentTime;
-  }
-
-  if (!m_gestureLag || 
-        m_selectedGesture != Gesture::Nope && 
-        currentTime - m_selectedGestureTime > small) {
-    m_handledOnce = true;
-    return m_selectedGesture;
-  }
-
-  return Gesture::Nope;
-}
-
-  private:
 
   bool      m_state;
   uint16_t  m_timing[history_size];
@@ -124,4 +136,5 @@ Gesture GestureValidate(uint32_t currentTime) {
   uint16_t  m_intervalSmallMs;
   uint16_t  m_intervalBigMs;
   bool      m_gestureLag;
+  bool      m_invert;
 };

@@ -67,6 +67,19 @@ union MasterRegister
    uint16_t value;
 };
 
+union ZoneToAnalogRegister
+{
+   struct {
+     uint8_t Map :8;
+     bool MergeRule :2;//enum MergeRule
+     bool reserve    :6;
+   } coils;
+   struct {
+     uint8_t first  :8;
+     uint8_t second :8;
+   } words;
+   uint16_t value;
+};
 
 union GestureRegister
 {
@@ -142,6 +155,14 @@ class RegisterModel {
 
   bool GetWordBit(bool hiLo, uint8_t bit) {
     return bitRead(hiLo ? regs[m_registerNum].words.first : regs[m_registerNum].words.second,bit);
+  }
+
+  void SetWordBit(bool hiLo, uint8_t bit, bool value) {
+    if (hiLo) {
+      regs[m_registerNum].words.first = bitWrite(regs[m_registerNum].words.first,bit, value);
+    } else {
+      regs[m_registerNum].words.second = bitWrite(regs[m_registerNum].words.second,bit, value);
+    }
   }
 
   protected:
@@ -260,3 +281,26 @@ private:
 
 //todo
 //#define forEach8Bit(name,source) int name = 0; for (Int8RegIterator t##name(source); t##name.HasNext(), name = t##name.Get(); t##name.Step())
+
+//
+// Read\write single coil in defined address
+//
+class CoilModel {
+    public:
+    CoilModel(uint8_t reg, uint8_t bit) {
+      m_registerNum = reg;
+      m_bit = bit;
+    }
+
+    void Set(bool value) {
+      regs[m_registerNum].value = bitWrite(regs[m_registerNum].value, m_bit, value);
+    }
+
+    bool Get() {
+      return bitRead(regs[m_registerNum].value, m_bit);
+    }
+
+    private:
+    uint8_t m_registerNum;
+    uint8_t m_bit;
+};
