@@ -49,10 +49,75 @@ _The diagram shows the logic blocks, the direction of movement of the signal and
 
 The operation scenario is configured by setting the values in the appropriate registers. Most settings look like a bit mask, where each bit corresponds to the output channel.
 
-Example. The simplest use case is the end-to-end transmission of the signal from the input to the output. This mapping looks like a ladder in bitwise form. _The screenshots show ModbusPoll software._
+### Example
+The simplest use case is the end-to-end transmission of the signal from the input to the output. This mapping looks like a ladder in bitwise form. _The screenshots show ModbusPoll software._
 ![bit_ladder](docs/bit_ladder.png)
 
 [List of all registers](docs/REGISTERS.md)
+
+We set the following registers to the specified values:
+```
+10 = 1; 11 = 2; 12 = 4; 13 = 8; 14 = 16; 15 = 32; 16 = 64; 17 = 128
+20 = 1; 21 = 2; 22 = 4; 23 = 8; 24 = 16; 25 = 32; 26 = 64; 27 = 128
+```
+Registers 10-17 indicate that each analog input sends a signal to the corresponding processor of the zone. Registers 20-27 indicate that each processor sends a signal to the corresponding output. In the bit representation, we will see the same ladder. After that, the signal will pass freely from input 1 to output 1. From input 2 to output 2 and so on.
+
+Let's change the value:
+```
+10 = 255
+```
+In bitwise representation, it looks like 1111_1111. We read it as follows: Analog input 1 sends a signal to all 8 processors. Since we previously assigned each processor its own output, it turns out that the first input will control all outputs simultaneously. ~~Let's call it a master switch.~~
+
+The register contains 16 bits. In the range of 10-17, the highest byte reflects the effect of the input on the zone processor as a sensor. The sensor will turn on the light in the minimum glow mode. Imagine that we have a motion sensor in the entrance area connected to the 2nd input. Let's set the register value:
+```
+it was
+11 = 1282 (0000_0000_0000_0010)
+change to
+11 = 1282 (0000_0101_0000_0010)
+                 ^ ^
+```
+Thus, we say that input 2 will illuminate the second zone by 100% and the 1st, 3nd zone by 50%. We have highlighted the adjacent areas.
+
+### Example with a gesture
+
+We continue to work with the previous configuration. Let's say we have pass-through switches at inputs 3 and 4 that need to control the lighting at output 8.
+
+```
+12 = 128 (1000_0000)
+13 = 128 (1000_0000)
+```
+
+But this option will require additional clicks on the switches to bring them to the same state. It's not very convenient. There are gestures for this. Turning off direct control:
+
+```
+12 = 0 (0000_0000)
+13 = 0 (0000_0000)
+```
+
+Analog inputs 3 and 4 refer to gesture No. 1:
+
+```
+32 = 1 (0000_0001)
+33 = 1 (0000_0001)
+```
+
+We add a gesture (one of eight possible ones) and a scene.
+
+```
+40 = 268 (0000_0001_0000_1100)
+                          ^^^    Action::Toggle = 4
+                         ^       apply to processor
+                       ^         no rotation
+                    ^^^          Gesture::OneClick = 0
+		  ^^^^ ^^^^              map to scene 1
+
+50 = 32896  (1000_0000_1000_0000)
+             ^         ^
+       apply to ch8    ^
+                  activate ch8
+```
+
+After that, inputs 3 and 4 activate scene 1 by clicking and apply the ** Toggle ** action to it
 
 ## Hardware
 

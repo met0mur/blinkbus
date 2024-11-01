@@ -1,4 +1,3 @@
-
 |XX 	|**register name** 			|ACCESS|			purpose|
 |-|-|-|-|
 |		|:XX-XX bits range 			|:XX-XX coilrange|	purpose|
@@ -39,6 +38,6 @@
 |50-57	|**scenes**					|W| 	 represents template to applying a gesture|
 |	    |:00-07			||		 each channel activation state (1  apply action, 0  disable)|
 |		|:08-15			||		 each channel activation mask (1  touch, 0  do not)|
-|60-67	|**pwmState		**		|RW| 	 0-255 value of current pwm for each analog channel|
-|90		|**PwmMinLevel	**		|R|		 configuring value setting when processor in MIN state|
-|91		|**PwmHalfLevel	**		|R| 	 configuring value setting when processor in HALF state|
+|60-67	|** pwmState		**		|RW| 	 0-255 value of current pwm for each analog channel|
+|90		|** PwmMinLevel	**		|R|		 configuring value setting when processor in MIN state|
+|91		|** PwmHalfLevel	**		|R| 	 configuring value setting when processor in HALF state|

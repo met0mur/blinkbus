@@ -20,7 +20,7 @@ class BlinkBus {
   SwitchIOModel processorSensorIO       {1, false};
   RegisterModel<MasterRegister> master  {2};
   SwitchIOModel analogInputs            {3, true};
-  SwitchIOModel analogOutputsReg        {4, true};
+  SwitchIOModel analogOutputsReg        {3, false};
 
   RegisterModel<CommonRegister> debugger      {5};
   RegisterModel<CommonRegister> modbusSlaveId {8};
