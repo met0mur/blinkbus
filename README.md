@@ -52,6 +52,8 @@ The operation scenario is configured by setting the values in the appropriate re
 Example. The simplest use case is the end-to-end transmission of the signal from the input to the output. This mapping looks like a ladder in bitwise form. _The screenshots show ModbusPoll software._
 ![bit_ladder](docs/bit_ladder.png)
 
+[List of all registers](docs/REGISTERS.md)
+
 ## Hardware
 
 It was tested only on the Arduino Nano. 

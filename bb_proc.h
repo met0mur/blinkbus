@@ -16,7 +16,7 @@ class ZoneProcessor {
     if (SignalSensor.HasValue()) {
       bool ss = SignalSensor.Use();
       if (ss && m_state == LightValue::Off && !StateSensorDayMode) {
-        m_state = StateSensorEveningMode ? LightValue::Half : LightValue::Min;
+        m_state = StateSensorEveningMode ? LightValue::On : LightValue::Min;
       } else if (!ss && IsLightValueSemistate(m_state)) {
         m_state = LightValue::Off;
       }
