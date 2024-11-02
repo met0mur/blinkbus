@@ -119,11 +119,21 @@ We add a gesture (one of eight possible ones) and a scene.
 
 After that, inputs 3 and 4 activate scene 1 by clicking and apply the ** Toggle ** action to it
 
+### Saving settings
 
+Register No. 0 is the control register. You can write the command number into it and if it is executed successfully, the register will take the value 1.
+
+All the settings above were performed with registers that are stored in RAM. To avoid losing the settings, you need to save the registers in the **eeprom**. This can be done by writing the value 734 to register No. 0. After that, when starting the arduino, the saved configuration will be automatically loaded. 
+
+By writing the value 2 to register No. 0, you can return the default settings.
+
+### Setup from the code
+
+Another configuration option is to modify the code **LoadConfigDefaults**. This is not so convenient as it will require rewriting the sketch after each edit.
 
 ## Sketch
 
-It was tested only on the Arduino Nano, but there is confidence that it will run on other models. Together with the modbus library, the sketch takes up 8260 bytes (26%). There is a margin for any RGB lib for example.
+It was tested only on the Arduino Nano, but there is confidence that it will run on other models. Together with the modbus library, the sketch takes up 8398 bytes (27%). There is a margin for any RGB lib for example.
 
 The modbus library used is: https://github.com/EngDial/ModbusTCP . There is no hard link to this option. You can replace it with any other one. It is important to leave the design framed around the **poll** call. _If you have any ideas on how to push registers without memcpy, suggest it._
 
@@ -149,5 +159,7 @@ BlinkBus facade(&hardwareIO);
 
 ## Hardware
 
+![test stand](docs/test.jpg)
 The inputs, outputs are decoupled via optocouplers. The ADCs are pulled down to the ground. Example connecting a single input and output:
-![bit_ladder](docs/circuit.svg)
+![circuit](docs/circuit.svg)
+

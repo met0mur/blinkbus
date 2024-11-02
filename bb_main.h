@@ -146,7 +146,7 @@ class BlinkBus {
       m_channelProcessor[i].Step( analogInputs.States[i].Get() , currentTime );
 
       //no gestures map
-      if (analogToGestureMap[i].Get().words.first == 0) {
+      if (analogToGestureMap[i].Get().bytes.first == 0) {
         continue;
       }
 
@@ -154,7 +154,7 @@ class BlinkBus {
       if (g != Gesture::Nope) {
         debugger.SetFirstWord((int)g);
         //map input to gestures
-        forEach8Bit(gestureChannel, analogToGestureMap[i].Get().words.first) {
+        forEach8Bit(gestureChannel, analogToGestureMap[i].Get().bytes.first) {
           GestureRegister gesture = gestureToSceneMap[gestureChannel.Get()].Get();
           if (gesture.coils.type == (int)g) {
             //first finded gesture set to activate
@@ -194,7 +194,7 @@ class BlinkBus {
         RegisterModel<CommonRegister> sceneMap = scenes[sceneChannel];
 
         //scene map itetate affected channel
-        forEach8Bit(affectedChannel, sceneMap.Get().words.second) {
+        forEach8Bit(affectedChannel, sceneMap.Get().bytes.second) {
           bool sceneMapValue = sceneMap.GetWordBit(true, affectedChannel.Get());
 
           if (sa.coils.procOrOut) {
@@ -223,11 +223,11 @@ class BlinkBus {
       }
       //iterate all switch channels
       
-      forEach8Bit(procNum, analogToProcMap[i].Get().words.first) {
+      forEach8Bit(procNum, analogToProcMap[i].Get().bytes.first) {
         m_zoneProcessors[procNum.Get()].SignalSwitch.Set(m_channelProcessor[i].FilteredState.Get());
       }
       //iterate all sensor channels
-      forEach8Bit(procNumS, analogToProcMap[i].Get().words.second) {
+      forEach8Bit(procNumS, analogToProcMap[i].Get().bytes.second) {
         m_zoneProcessors[procNumS.Get()].SignalSensor.Set(m_channelProcessor[i].FilteredState.Get());
       }
 

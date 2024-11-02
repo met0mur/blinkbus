@@ -10,7 +10,7 @@
 
 ///
 /// Easy way to manage modbus register - union
-/// @value, @words field must be in all variants for templete working
+/// @value, @bytes field must be in all variants for templete working
 ///
 
 union CommonRegister
@@ -36,7 +36,7 @@ union CommonRegister
    struct {
      uint8_t first:8;
      uint8_t second:8;
-   } words;
+   } bytes;
    uint16_t value;
 };
 
@@ -63,7 +63,7 @@ union MasterRegister
    struct {
      uint8_t first    :8;
      uint8_t second   :8;
-   } words;
+   } bytes;
    uint16_t value;
 };
 
@@ -77,7 +77,7 @@ union ZoneToAnalogRegister
    struct {
      uint8_t first  :8;
      uint8_t second :8;
-   } words;
+   } bytes;
    uint16_t value;
 };
 
@@ -93,7 +93,7 @@ union GestureRegister
    struct {
      uint8_t first  :8;
      uint8_t second :8;
-   } words;
+   } bytes;
    uint16_t value;
 };
 
@@ -109,7 +109,7 @@ union SceneActivateRegister
    struct {
      uint8_t first  :8;
      uint8_t second :8;
-   } words;
+   } bytes;
    uint16_t value;
 };
 
@@ -146,22 +146,22 @@ class RegisterModel {
   }
 
   void SetFirstWord(uint8_t w) {
-    regs[m_registerNum].words.first = w;
+    regs[m_registerNum].bytes.first = w;
   }
 
   void SetSecondWord(uint8_t w) {
-    regs[m_registerNum].words.second = w;
+    regs[m_registerNum].bytes.second = w;
   }
 
   bool GetWordBit(bool hiLo, uint8_t bit) {
-    return bitRead(hiLo ? regs[m_registerNum].words.first : regs[m_registerNum].words.second,bit);
+    return bitRead(hiLo ? regs[m_registerNum].bytes.first : regs[m_registerNum].bytes.second,bit);
   }
 
   void SetWordBit(bool hiLo, uint8_t bit, bool value) {
     if (hiLo) {
-      regs[m_registerNum].words.first = bitWrite(regs[m_registerNum].words.first,bit, value);
+      regs[m_registerNum].bytes.first = bitWrite(regs[m_registerNum].bytes.first,bit, value);
     } else {
-      regs[m_registerNum].words.second = bitWrite(regs[m_registerNum].words.second,bit, value);
+      regs[m_registerNum].bytes.second = bitWrite(regs[m_registerNum].bytes.second,bit, value);
     }
   }
 
@@ -185,7 +185,7 @@ class SwitchIOModel {
 
   void virtual Read() {
     for (int i = 0; i < channel_count; i++) {
-      int v = m_hiLo ? Reg.Get().words.first : Reg.Get().words.second;
+      int v = m_hiLo ? Reg.Get().bytes.first : Reg.Get().bytes.second;
       States[i].Set(bitRead(v,i));
     }
   }
