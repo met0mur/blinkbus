@@ -2,7 +2,6 @@
 #include "bb_main.h"
 #include "bb_hardware.h"
 
-#define register_cmd 0
 
 BasicHardwareIO hardwareIO; 
 BlinkBus facade(&hardwareIO);
@@ -134,6 +133,8 @@ void loop() {
   io_poll_raw();
   facade.Process( millis() );
 } 
+
+#define register_cmd 0
 
 void io_poll_raw() {
 

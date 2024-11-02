@@ -119,10 +119,35 @@ We add a gesture (one of eight possible ones) and a scene.
 
 After that, inputs 3 and 4 activate scene 1 by clicking and apply the ** Toggle ** action to it
 
+
+
+## Sketch
+
+It was tested only on the Arduino Nano, but there is confidence that it will run on other models. Together with the modbus library, the sketch takes up 8260 bytes (26%). There is a margin for any RGB lib for example.
+
+The modbus library used is: https://github.com/EngDial/ModbusTCP . There is no hard link to this option. You can replace it with any other one. It is important to leave the design framed around the **poll** call. _If you have any ideas on how to push registers without memcpy, suggest it._
+
+```
+  uint16_t data[registers_count];
+  memcpy(data, regs, sizeof(uint16_t)*registers_count);
+  _anyPollingMethod_( data, registers_count );  
+  memcpy(regs, data, sizeof(uint16_t)*registers_count);
+```
+
+The **BlinkBus** class accepts one argument - this is a pointer to **BBHardwareIO**. An abstraction that reads and writes arduino pins. You can make your own implementation without getting into the main code. **channel** in the method signature takes values from 0 to 7. An example of the implementation can be viewed in **BasicHardwareIO**.
+
+```
+class BBHardwareIO {
+  public:
+  virtual bool ReadInput(uint8_t channel) = 0;
+  virtual void WriteOutput(uint8_t channel, bool trigger, LightValue lv, uint8_t pwmLevel) = 0;
+};
+
+BasicHardwareIO hardwareIO; 
+BlinkBus facade(&hardwareIO);
+```
+
 ## Hardware
 
-It was tested only on the Arduino Nano. 
-
-
-## T
-Used modbus library -> https://github.com/EngDial/ModbusTCP
+The inputs, outputs are decoupled via optocouplers. The ADCs are pulled down to the ground. Example connecting a single input and output:
+![bit_ladder](docs/circuit.svg)
