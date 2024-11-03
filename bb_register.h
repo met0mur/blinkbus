@@ -50,7 +50,7 @@ union MasterRegister
      bool InvertOutput:1;
      bool GestureLag  :1;
      bool AnimatePWM  :1;
-     bool SceneAct    :1;
+     bool coil07      :1;
      bool coil08      :1;
      bool coil09      :1;
      bool coil10      :1;
@@ -118,6 +118,10 @@ union SceneActivateRegister
 CommonRegister unionRegisters[registers_count]; 
 #define regs unionRegisters
 #endif
+
+int GetRegsSize() {
+  return sizeof(uint16_t)*registers_count;
+}
 
 //
 // Read\write registers with custom union type in defined address

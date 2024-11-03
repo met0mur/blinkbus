@@ -37,7 +37,7 @@ In this implementation, we have only 8 pieces each. Inputs, outputs, zones, scen
 
 * **The input and output of the** signal correspond to the specific pins of the arduino.
 * **The level of illumination**. To simplify it, 4 levels are accepted. Off, On and two intermediate ones for working with pwm.
-* **The processor of the zone**. A block that controls the behavior of one "zone" of lighting. It takes into account all incoming signals, sucks the state and changes it if necessary.
+* **The processor of the zone**. A block that controls the behavior of one "zone" of lighting. It takes into account all incoming signals, change the state it if necessary.
 * **Gesture**. A certain sequence of input signals that matches the specified ones. One click. Double. Triple. A long click. Hold. Click+Hold. When performing a gesture, a scene can be activated.
 * **Scene**. A predefined set of zones or outputs.
 * **Action**. The action is applied to the scene. One scene can be executed with different actions. Enabling. Shutdown. Switching. Rotation.
@@ -49,11 +49,15 @@ _The diagram shows the logic blocks, the direction of movement of the signal and
 
 The operation scenario is configured by setting the values in the appropriate registers. Most settings look like a bit mask, where each bit corresponds to the output channel.
 
+[List of all registers](docs/REGISTERS.md)
+
 ### Example
-The simplest use case is the end-to-end transmission of the signal from the input to the output. This mapping looks like a ladder in bitwise form. _The screenshots show ModbusPoll software._
+
+The simplest use case is the end-to-end transmission of the signal from the input to the output. This mapping looks like a ladder in bitwise form.
 ![bit_ladder](docs/bit_ladder.png)
 
-[List of all registers](docs/REGISTERS.md)
+> [!TIP]
+> In the screenshot ModbusPoll software. I recommend using it when setting up and monitoring. The files in the mbp session are attached to the repository. Double-clicking on the register will open the register setup window. It will be possible to set the value bitwise.
 
 We set the following registers to the specified values:
 ```
@@ -117,7 +121,7 @@ We add a gesture (one of eight possible ones) and a scene.
                   activate ch8
 ```
 
-After that, inputs 3 and 4 activate scene 1 by clicking and apply the ** Toggle ** action to it
+After that, inputs 3 and 4 activate scene 1 by clicking and apply the **Toggle** action to it
 
 ### Saving settings
 
@@ -130,6 +134,10 @@ By writing the value 2 to register No. 0, you can return the default settings.
 ### Setup from the code
 
 Another configuration option is to modify the code **LoadConfigDefaults**. This is not so convenient as it will require rewriting the sketch after each edit.
+
+### Setting up the Modbus connection
+
+Register 8 is responsible for the device number **slave**. Register 9 determines the transfer rate. The default Id is 1, 19200. After changing the values, you need to save the settings to **eeprom** and restart arduino.
 
 ## Sketch
 
@@ -162,4 +170,5 @@ BlinkBus facade(&hardwareIO);
 ![test stand](docs/test.jpg)
 The inputs, outputs are decoupled via optocouplers. The ADCs are pulled down to the ground. Example connecting a single input and output:
 ![circuit](docs/circuit.svg)
+The RS485 level converter is connected to pins D0, D1 (tx, rx)
 

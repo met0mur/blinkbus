@@ -20,10 +20,6 @@ void SetupGesture(int channel, Gesture gtr, Action act, uint8_t map, bool procOr
   facade.gestureToSceneMap[channel].Set(g);
 }
 
-int GetRegsSize() {
-  return sizeof(uint16_t)*registers_count;
-}
-
 void LoadFromEeprom() {
   uint8_t flag = eeprom_read_byte(1);
 
@@ -44,7 +40,7 @@ void LoadConfigDefaults() {
   facade.modbusSpeed.Set(19200);
 
   for (int i = 0; i < channel_count; i++) {
-    facade.analogToProcMap[i].SetFirstWord( bitWrite(facade.analogToProcMap[i].Get().bytes.first, i, true));
+    facade.inputToProcMap[i].SetFirstWord( bitWrite(facade.inputToProcMap[i].Get().bytes.first, i, true));
   }
   for (int i = 0; i < channel_count; i++) {
     facade.procToOutputMap[i].SetFirstWord( bitWrite(facade.procToOutputMap[i].Get().bytes.first, i, true));
@@ -114,7 +110,7 @@ void setup() {
   } 
   static Modbus netInstance(facade.modbusSlaveId.Get().value, 0, 0);
   net = &netInstance;
-  net->begin( 19200, SERIAL_8N2 ); 
+  net->begin( facade.modbusSpeed.Get().value, SERIAL_8N2 ); 
 }
 
 //arduino loop

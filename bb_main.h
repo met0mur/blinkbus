@@ -26,7 +26,7 @@ class BlinkBus {
   RegisterModel<CommonRegister> modbusSlaveId {8};
   RegisterModel<CommonRegister> modbusSpeed   {9};
 
-  RegisterModel<CommonRegister> analogToProcMap[channel_count] = {
+  RegisterModel<CommonRegister> inputToProcMap[channel_count] = {
     RegisterModel<CommonRegister>(10),
     RegisterModel<CommonRegister>(11),
     RegisterModel<CommonRegister>(12),
@@ -223,11 +223,11 @@ class BlinkBus {
       }
       //iterate all switch channels
       
-      forEach8Bit(procNum, analogToProcMap[i].Get().bytes.first) {
+      forEach8Bit(procNum, inputToProcMap[i].Get().bytes.first) {
         m_zoneProcessors[procNum.Get()].SignalSwitch.Set(m_channelProcessor[i].FilteredState.Get());
       }
       //iterate all sensor channels
-      forEach8Bit(procNumS, analogToProcMap[i].Get().bytes.second) {
+      forEach8Bit(procNumS, inputToProcMap[i].Get().bytes.second) {
         m_zoneProcessors[procNumS.Get()].SignalSensor.Set(m_channelProcessor[i].FilteredState.Get());
       }
 
@@ -268,7 +268,11 @@ class BlinkBus {
 
       //iterate all enabled channels
       forEach8Bit(analogOutputChannel, procToOutputMap[i].Get().coils.Map) {
-        m_analogOutputs[analogOutputChannel.Get()].Set(processor->OutputState.Get());
+        MergeRule rule = static_cast<MergeRule>(procToOutputMap[i].Get().coils.MergeRule);
+        LightValue lastState = m_analogOutputs[analogOutputChannel.Get()].Get();
+        LightValue newState = processor->OutputState.Get();
+
+        m_analogOutputs[analogOutputChannel.Get()].Set(MergeLightValue(lastState, newState, rule));
       }
 
       processor->OutputState.MarkHandled();
